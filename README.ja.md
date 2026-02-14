@@ -4,7 +4,7 @@
 AIVtuberのソースコードです。
 現在、コメント取得と発話ができます。
 
-##　環境
+## 環境
 ### python側
 mamba環境でaienv_for_create.ymlを参照。
 ### Unity側
