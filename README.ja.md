@@ -9,5 +9,6 @@ AIVtuberのソースコードです。
 mamba環境でaienv_for_create.ymlを参照。
 ### Unity側
 NativeWedSocketとNuget、MessagePackを使用。
+また、シェーダーとしてlilToonを使用。
 ### その他
 わんコメを使用してコメントを取得している。
