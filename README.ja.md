@@ -11,6 +11,8 @@ mamba環境でaienv_for_create.ymlを参照。
 NativeWedSocketとNuget、MessagePackを使用。
 また、シェーダーとしてlilToonを使用。
 ### その他
-わんコメを使用してコメントを取得している。
-また、ローカルLLMとして、ollama上で、dsasai/llama3-elyza-jp-8bを使用している。
-また、興味推定の目的でgoogle search APIも　導入している。
+・わんコメを使用してコメントを取得している。
+・ローカルLLMとして、ollama上で、dsasai/llama3-elyza-jp-8bを使用している。
+・興味推定の目的でgoogle search APIも導入している。
+・podman上でdocker互換で、voicevoxを動かしています。
+
