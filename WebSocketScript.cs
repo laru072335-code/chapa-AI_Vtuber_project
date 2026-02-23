@@ -2,13 +2,19 @@ using UnityEngine;
 using NativeWebSocket;
 using MessagePack;
 using System.Collections.Generic;
-using System.Diagnostics.Tracing;
-using System;
 
 //pythonからvisemeデータを受け取り、反映するプログラム
 
 [MessagePackObject]
 public class Recive_wedsocket_type
+{
+    [Key(0)]
+    public List<viseme> viseme { get; set; }
+    [Key(1)]
+    public string Subtitle { get; set; }
+}
+[MessagePackObject]
+public class viseme
 {
     [Key(0)]
     public string? Shape_key { get; set; }
@@ -57,19 +63,21 @@ public class Recive_wedsocket_type
 
         }
     }
-
 }
+
 
 public class WebSocketScript : MonoBehaviour
 {
     WebSocket ws;
     float[] recive_list = new float[27];
     float timer = 0f;
-    List<Recive_wedsocket_type> data = new List<Recive_wedsocket_type>();
+    List<viseme> data = new List<viseme>();
+    [SerializeField] private SubtitleScript sb;
+    private SkinnedMeshRenderer skinnedMeshRenderer;
     Dictionary<string, float> recive_lis = new Dictionary<string, float>() { { "au1L", 0 }, { "au1R", 0 }, { "au2R", 0 }, { "au2L", 0 }, { "au4L", 0 }, { "au4R", 0 }, { "au5L", 0 }, { "au5R", 0 }, { "au6L", 0 }, { "au6R", 0 }, { "au12L", 0 }, { "au12R", 0 }, { "au15L", 0 }, { "au15R", 0 }, { "au22", 0 }, { "au25", 0 }, { "au26", 0 }, { "au27", 0 }, { "au43L", 0 }, { "au43R", 0 }, { "a", 0 }, { "i", 0 }, { "u", 0 }, { "e", 0 }, { "o", 0 }, { "mbp", 0 }, { "fv", 0 } };
     readonly List<string> shapekeyname_list = new List<string>() { "au1L", "au1R", "au2L", "au2R", "au4L", "au4R", "au5L", "au5R", "au6L", "au6R", "au12L", "au12R", "au15L", "au15R", "au22", "au25", "au26", "au27", "au43L", "au43R", "a", "i", "u", "e", "o", "mbp", "fv" };
     readonly List<string> shapekeyname_list_beta = new List<string>() { "あ", "い", "う", "え", "お" };
-    private SkinnedMeshRenderer skinnedMeshRenderer;
+
 
 
     async void Start()
@@ -86,19 +94,21 @@ public class WebSocketScript : MonoBehaviour
         };
         ws.OnMessage += (bytes) =>//メッセージを受け取ったとき
         {
-            data = MessagePackSerializer.Deserialize<List<Recive_wedsocket_type>>(bytes);
-            string data_string = Convert.ToString(data);
-            Debug.Log(data_string);
+            var recive = MessagePackSerializer.Deserialize<Recive_wedsocket_type>(bytes);
+            Debug.Log("今受信しました。");
             timer = 0f;
+            data = recive.viseme;
+            Debug.Log(recive.Subtitle);
+            sb.Display(recive.Subtitle);//字幕表示
             //この部分は一時的なshape_keyの名前の不一致によるもの
             foreach (var item in data)
             {
                 item.Change_Shape_key();
-                Debug.Log(item);
+                //Debug.Log(item);
 
                 //Debug.Log($"Key: {shapekey}, Value: {shapekey_time}");
             }
-            //この部分は一時的なshape_keyの名前の不一致によるもの
+            //前の実装
 
             //ws.SendText("r");//readyの略
 
@@ -140,10 +150,10 @@ public class WebSocketScript : MonoBehaviour
             if (index != -1)
             {
                 skinnedMeshRenderer.SetBlendShapeWeight(index, value);
-                if (value != 0)
+                /*if (value != 0)
                 {
                     Debug.Log($"{shapeName},{value}");
-                }
+                }*/
             }
             else
             {
@@ -159,7 +169,7 @@ public class WebSocketScript : MonoBehaviour
 
         if (data == null || data.Count == 0)
         {
-            foreach (Recive_wedsocket_type vowel in data)
+            foreach (viseme vowel in data)
             {
                 Debug.Log(vowel);
             }
@@ -173,7 +183,7 @@ public class WebSocketScript : MonoBehaviour
         }
         else
         {
-            Debug.Log(timer);
+            //Debug.Log(timer);
             if (timer <= data[data.Count - 1].Shape_key_time_value)
             {
                 for (int index = 0; index < data.Count; index++)
@@ -205,6 +215,8 @@ public class WebSocketScript : MonoBehaviour
             else
             {
                 data.Clear();
+                sb.Hide();//ここに字幕削除の処理
+                Debug.Log("data reset");
             }
 
         }
