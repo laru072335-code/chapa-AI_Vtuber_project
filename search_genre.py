@@ -1,6 +1,6 @@
-import sqlite3, json
+import sqlite3
 import numpy as np
-import faiss
+import hnswlib
 from bpemb import BPEmb as BP
 conn = sqlite3.connect("data_for_judge.db",check_same_thread=False)# DBからベクトルをロード
 cur = conn.cursor()
@@ -20,10 +20,11 @@ def unknown_word_classification(prompt):#固有名詞非対応
     newvec =np.mean(BP_ja.embed(prompt),axis=0)#未知語のベクトル生成
     newvec = newvec.reshape(1, -1)#変形する
     # FAISSインデックス作成
-    index = faiss.IndexFlatIP(300)
-    index.add(vectors)
+    index = hnswlib.Index(space='cosine', dim=300) # 'l2' or 'ip' (内積) も可
+    index.init_index(10000,)
+    index.add_items(vectors)
     # クエリ検索
-    D, I = index.search(newvec, k=5)
+    I, D = index.knn_query(newvec, k=5)
 
     print("距離:", D)
     #print("候補ID:", [ids[i] for i in I[0]])

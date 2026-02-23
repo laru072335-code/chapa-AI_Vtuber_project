@@ -9,6 +9,8 @@ import msgpack
 
 start_sign =False
 viseme_queue=queue.Queue()
+subtitles=queue.Queue()
+
 connected = set()
   
 async def handler(websocket):
@@ -37,13 +39,15 @@ async def send_expression_value():
         if start_sign:
             try:
                 viseme_value= viseme_queue.get_nowait()  
-                binary_data=msgpack.packb(viseme_value)
+                subtitle=subtitles.get_nowait()
+                binary_data=msgpack.packb([viseme_value,subtitle])
+                
             except:
                 viseme_value=None
         #print(viseme_value)
         #print("unity!!!")
         if connected and start_sign and (not viseme_value==None):
-            #time.sleep(0.1)#これを入れることで多分あんていしている。
+            #time.sleep(0.1)
             await asyncio.gather(*(ws.send(binary_data) for ws in connected))
 async def main():
     async with websockets.serve(handler, "localhost", 8765)as server:
@@ -53,8 +57,10 @@ async def main():
         #asyncio.Future()  # サーバーをずっと動かす
 def entry_others():
     asyncio.run(main())   
-def set_viseme_queue(value):
+def set_viseme_queue(viseme,subtitle):
     global viseme_queue
-    viseme_queue.put(value)
+    global subtitles
+    viseme_queue.put(viseme)
+    subtitles.put(subtitle)
 if __name__ =="__main__":
     asyncio.run(main())
