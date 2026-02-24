@@ -22,15 +22,15 @@ NativeWedSocketとNuget、MessagePackを使用。
 - 興味推定の目的でgoogle search APIも導入している。
 - VOICEVOXを使用して発話を制御している。
 
-##環境構築方法
-- 1,OneComme VOICEVOX をダウンロードしてください。
-- 2,brewなどで、ollamaを導入して、dsasai/llama3-elyza-jp-8bをインストールしてください。
-- 3,環境をaienv_for_create.ymlを参照して構築してください。
+## 環境構築方法
+- 1,[OneComme](https://onecomme.com/) [VOICEVOX](https://voicevox.hiroshiba.jp/) をダウンロードしてください。
+- 2,brewなどで、[ollama](https://ollama.com/)を導入して、dsasai/llama3-elyza-jp-8bをインストールしてください。
+- 3,環境を`aienv_for_create.yml`を参照して構築してください。
 - 4,releasesにある、unity側のプログラム(virtual_AI_roid0.1(alpha))をダウンロードしてください。また、pythonブランチのfor_install.zipをダウンロードしてください。
 
 ## 起動方法
 - 1,OneComme,VOICEVOXを起動してください。
-- 2,OneCommeのコメントテスター機能を使って、コメントを何か追加してください。
+- 2,OneCommeのコメントテスター機能を使って、コメントを何か追加してください。あるいは、pythonブランチのcomments_test.pyを実行してください。
 - 3,for_installの中にある、AI_Vtuber_core_for_steam_voicevox_version.pyを環境項目で示した環境で実行してください。
 - 4,unity側のvirtual_AI_roid0.1(alpha)を起動してください。(こちらをAI_Vtuber_core_for_steam_voicevox_version.pyより先に起動すると動きません)
 
