@@ -20,26 +20,23 @@ Also uses lilToon as the shader.
 - Comments are retrieved using WanComme.
 - For the local LLM, dsasai/llama3-elyza-jp-8b is used on Ollama.
 - The Google Search API is also integrated for interest estimation.
-- Speech is controlled using VOICEVOX.
+- Speech control is handled using VOICEVOX.
 
-## Environment Setup Method
-- 1. Download OneComme VOICEVOX.
-- 2. Install Ollama via brew or similar, then install dsasai/llama3-elyza-jp-8b.
-- 3. Set up the environment by referencing aienv_for_create.yml.
-- 4. Download the Unity-side program (virtual_AI_roid0.1(alpha)) from releases. Also download for_install.zip from the python branch.
+## Environment Setup
+- 1. Download [OneComme](https://onecomme.com/) Download [VOICEVOX](https://voicevox.hiroshiba.jp/).
+- 2. Install [ollama](https://ollama.com/) via brew or similar, then install dsasai/llama3-elyza-jp-8b.
+- 3. Set up the environment by referencing `aienv_for_create.yml`.
+- 4, Download the Unity-side program (virtual_AI_roid0.1(alpha)) from the releases directory. Also download the for_install.zip from the python branch.
 
-## Startup Procedure
-- 1. Launch OneComme and VOICEVOX.
-- 2. Use OneComme's comment tester feature to add some comments.
-- 3. Run AI_Vtuber_core_for_steam_voicevox_version.py from the for_install directory in the environment specified earlier.
-- 4. Launch virtual_AI_roid0.1(alpha) on the Unity side. (Launching this before AI_Vtuber_core_for_steam_voicevox_version.py will cause it to fail.)
+## Startup Method
+- 1, Launch OneComme and VOICEVOX.
+- 2, Use OneComme's comment tester feature to add some comments. Alternatively, run `comments_test.py` from the python branch.
+- 3. Run `AI_Vtuber_core_for_steam_voicevox_version.py` from the `for_install` directory in the environment specified above.
+- 4. Launch the Unity-side `virtual_AI_roid0.1(alpha)`. (Launching this before `AI_Vtuber_core_for_steam_voicevox_version.py` will cause it to fail)
 
 ## Important Notes
-- This project is under development and may contain various bugs.
+- This project is under development, so various bugs may still exist.
 
 ## Test Environment
 - MacBook Air M4, 16GB RAM
 
-
-
-Translated with DeepL.com (free version)
