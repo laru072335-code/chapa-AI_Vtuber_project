@@ -1,7 +1,5 @@
 # AI_Vtuber_project
 
-# AI_Vtuber_project
-
 ## Installation Method
  (Currently not supported. If you wish to run it on your own computer, refer to the Environment Setup section.)
 
