@@ -1,5 +1,8 @@
 # AI_Vtuber_project
 
+## インストール方法
+  -1 OneCommeと、VOICEVOXをインストールしてください。
+
 ## 概要説明
 AIVtuberのソースコードです。
 現在、コメント取得と発話ができます。
@@ -16,3 +19,4 @@ NativeWedSocketとNuget、MessagePackを使用。
 - 興味推定の目的でgoogle search APIも導入している。
 - VOICEVOXを使用して発話を制御している。
 
+##環境構築方法
