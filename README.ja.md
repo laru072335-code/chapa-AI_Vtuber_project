@@ -14,8 +14,8 @@
 mamba環境で`aienv_for_create.yml`を参照。
 ### Unity側
 - バージョン6000.2.7f2を使っています。
-- NativeWedSocketとNuget、MessagePackを使用。
-- また、シェーダーとしてlilToonを使用。
+- [NativeWedSocket](https://github.com/endel/NativeWebSocket)と[Nuget](https://github.com/GlitchEnzo/NuGetForUnity)、[MessagePack](https://github.com/MessagePack-CSharp/MessagePack-CSharp)を使用。
+- また、シェーダーとして[lilToon](https://lilxyzw.github.io/lilToon/)を使用。
 - とりあえずの3dモデルとして、[小夜/SAYO公式MMDモデル](https://booth.pm/ja/items/6035432)を使用しています。
 - ※ モデルの権利は各権利者に帰属します。  
 - ※ 本リポジトリにモデルデータは含まれていない、または再配布を目的としていません。  
