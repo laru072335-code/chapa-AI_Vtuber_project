@@ -29,8 +29,8 @@ Also uses lilToon as the shader.
 - 4. Download the Unity-side program (virtual_AI_roid0.1(alpha)) from the releases directory. Also download the for_install.zip from the python branch.
 
 ## Startup Method
-- 1, Launch OneComme and VOICEVOX.
-- 2, Use OneComme's comment tester feature to add some comments. Alternatively, run `comments_test.py` from the python branch.
+- 1. Launch OneComme and VOICEVOX.
+- 2. Use OneComme's comment tester feature to add some comments. Alternatively, run `comments_test.py` from the python branch.
 - 3. Run `AI_Vtuber_core_for_steam_voicevox_version.py` from the `for_install` directory in the environment specified above.
 - 4. Launch the Unity-side `virtual_AI_roid0.1(alpha)`. (Launching this before `AI_Vtuber_core_for_steam_voicevox_version.py` will cause it to fail)
 
