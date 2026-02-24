@@ -11,7 +11,7 @@
 
 ## 環境
 ### python側
-mamba環境で'aienv_for_create.yml'を参照。
+mamba環境で`aienv_for_create.yml`を参照。
 ### Unity側
 バージョン6000.2.7f2を使っています。
 NativeWedSocketとNuget、MessagePackを使用。
