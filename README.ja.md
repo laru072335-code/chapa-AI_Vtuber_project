@@ -12,6 +12,7 @@
 ### python側
 mamba環境でaienv_for_create.ymlを参照。
 ### Unity側
+バージョン6000.2.7f2を使っています。
 NativeWedSocketとNuget、MessagePackを使用。
 また、シェーダーとしてlilToonを使用。
 ### その他
@@ -23,6 +24,7 @@ NativeWedSocketとNuget、MessagePackを使用。
 ##環境構築方法
 - 1,OneComme VOICEVOX をダウンロードしてください。
 - 2,brewなどで、ollamaを導入して、mamba環境をaienv_for_create.ymlを参照して構築してください。
-- 3,releaseにある、unity側の
+- 3,releasesにある、unity側のプログラムをダウンロードしてください。また、pythonブランチのfor_install.zipをダウンロードしてください。
+- 4,
 
 
