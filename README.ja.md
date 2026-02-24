@@ -13,9 +13,10 @@
 ### python側
 mamba環境で`aienv_for_create.yml`を参照。
 ### Unity側
-バージョン6000.2.7f2を使っています。
-NativeWedSocketとNuget、MessagePackを使用。
-また、シェーダーとしてlilToonを使用。
+- バージョン6000.2.7f2を使っています。
+- NativeWedSocketとNuget、MessagePackを使用。
+- また、シェーダーとしてlilToonを使用。
+- とりあえずの3dモデルとして、[小夜/SAYO公式MMDモデル](https://booth.pm/ja/items/6035432)を使用しています。
 ### その他
 - わんコメを使用してコメントを取得している。
 - ローカルLLMとして、ollama上で、dsasai/llama3-elyza-jp-8bを使用している。
