@@ -31,8 +31,8 @@ NativeWedSocketとNuget、MessagePackを使用。
 ## 起動方法
 - 1,OneComme,VOICEVOXを起動してください。
 - 2,OneCommeのコメントテスター機能を使って、コメントを何か追加してください。あるいは、pythonブランチのcomments_test.pyを実行してください。
-- 3,for_installの中にある、AI_Vtuber_core_for_steam_voicevox_version.pyを環境項目で示した環境で実行してください。
-- 4,unity側のvirtual_AI_roid0.1(alpha)を起動してください。(こちらをAI_Vtuber_core_for_steam_voicevox_version.pyより先に起動すると動きません)
+- 3,for_installの中にある、`AI_Vtuber_core_for_steam_voicevox_version.py`を環境項目で示した環境で実行してください。
+- 4,unity側のvirtual_AI_roid0.1(alpha)を起動してください。(こちらを`AI_Vtuber_core_for_steam_voicevox_version.py`より先に起動すると動きません)
 
 ## 注意事項
 - このプロジェクトは開発途中であるので、さまざまなバグなどが残っている可能性があります。
