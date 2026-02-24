@@ -1,11 +1,12 @@
 # AI_Vtuber_project
 
 ## インストール方法
-  -1 OneCommeと、VOICEVOXをインストールしてください。
+ (現在サポートしていません。自分のパソコンで動かしたい場合は環境構築の項目を参照してください。)
 
 ## 概要説明
-AIVtuberのソースコードです。
-現在、コメント取得と発話ができます。
+### 自作のAIVtuberのソースコードです。
+- 現在、コメント取得と発話ができます。
+- 字幕表示機能やリップシンクも搭載されています。
 
 ## 環境
 ### python側
@@ -20,3 +21,8 @@ NativeWedSocketとNuget、MessagePackを使用。
 - VOICEVOXを使用して発話を制御している。
 
 ##環境構築方法
+- 1,OneComme VOICEVOX をダウンロードしてください。
+- 2,brewなどで、ollamaを導入して、mamba環境をaienv_for_create.ymlを参照して構築してください。
+- 3,releaseにある、unity側の
+
+
