@@ -23,7 +23,7 @@ NativeWedSocketとNuget、MessagePackを使用。
 - VOICEVOXを使用して発話を制御している。
 
 ## 環境構築方法
-- 1,[OneComme](https://onecomme.com/) [VOICEVOX](https://voicevox.hiroshiba.jp/) をダウンロードしてください。
+- 1,[OneComme](https://onecomme.com/) [VOICEVOX](https://voicevox.hiroshiba.jp/) をダウンロードしてください。また、Google search APIキーを.envファイルにSEARCH_ENGINEという名前で保存してください。
 - 2,brewなどで、[ollama](https://ollama.com/)を導入して、dsasai/llama3-elyza-jp-8bをインストールしてください。
 - 3,環境を`aienv_for_create.yml`を参照して構築してください。
 - 4,releasesにある、unity側のプログラム(virtual_AI_roid0.1(alpha))をダウンロードしてください。また、pythonブランチのfor_install.zipをダウンロードしてください。
