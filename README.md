@@ -23,7 +23,7 @@ Also uses lilToon as the shader.
 - Speech control is handled using VOICEVOX.
 
 ## Environment Setup
-- 1. Download [OneComme](https://onecomme.com/) Download [VOICEVOX](https://voicevox.hiroshiba.jp/).
+- 1. Download [OneComme](https://onecomme.com/) Download [VOICEVOX](https://voicevox.hiroshiba.jp/). Also, save your Google Search API key in the .env file under the name SEARCH_ENGINE.
 - 2. Install [ollama](https://ollama.com/) via brew or similar, then install dsasai/llama3-elyza-jp-8b.
 - 3. Set up the environment by referencing `aienv_for_create.yml`.
 - 4. Download the Unity-side program (virtual_AI_roid0.1(alpha)) from the releases directory. Also download the for_install.zip from the python branch.
