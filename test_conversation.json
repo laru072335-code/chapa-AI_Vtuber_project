@@ -10,45 +10,5 @@
     {
         "role": "assistant",
         "content": "構いませんよ。"
-    },
-    {
-        "role": "user",
-        "content": "おはよう"
-    },
-    {
-        "role": "assistant",
-        "content": "おはよう！温かみで。"
-    },
-    {
-        "role": "user",
-        "content": "元気？"
-    },
-    {
-        "role": "assistant",
-        "content": "はい、元気です。楽しませてください。"
-    },
-    {
-        "role": "user",
-        "content": "どうしようかな"
-    },
-    {
-        "role": "assistant",
-        "content": "元気です。"
-    },
-    {
-        "role": "user",
-        "content": "それはよかった"
-    },
-    {
-        "role": "assistant",
-        "content": "はい、元気です。"
-    },
-    {
-        "role": "user",
-        "content": "じゃあ、なんか話そうよ"
-    },
-    {
-        "role": "assistant",
-        "content": "はい。何を話す？"
     }
 ]
