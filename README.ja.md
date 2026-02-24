@@ -17,6 +17,9 @@ mamba環境で`aienv_for_create.yml`を参照。
 - NativeWedSocketとNuget、MessagePackを使用。
 - また、シェーダーとしてlilToonを使用。
 - とりあえずの3dモデルとして、[小夜/SAYO公式MMDモデル](https://booth.pm/ja/items/6035432)を使用しています。
+- ※ モデルの権利は各権利者に帰属します。  
+- ※ 本リポジトリにモデルデータは含まれていない、または再配布を目的としていません。  
+- ※ 利用時は配布元の利用規約を確認してください。
 ### その他
 - わんコメを使用してコメントを取得している。
 - ローカルLLMとして、ollama上で、dsasai/llama3-elyza-jp-8bを使用している。
