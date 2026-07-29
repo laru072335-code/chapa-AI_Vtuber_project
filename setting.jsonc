@@ -1,0 +1,11 @@
+{
+    //.jsoncにすることでコメントがjsonのファイルの中にかける
+    "Speaker": 46, //voicevoxのspeakerのID
+    "SettingAItext": "あなたは、絵文字を使わずできるだけ短く返答してください。ただし、温かみを忘れないでください。\n", //システムプロンプト
+    "AI_model": "gemma3:1b", //使用するLLM
+    "Max_queue_size": 20, //非同期に使用しているキューの最大容量
+    "sd.default.device": 2, //pythonで音声を再生する場合の再生するスピーカーの設定
+    "sound_output": "Unity", //音声をpython側か、unity側かどっちから出力するかの設定
+    "voicevox_path": "", //Mac以外の場合で必要なvoicevoxのパス名
+    "socialstream_path": "" //Mac以外の場合で必要なsocialstreamのパス名
+}
