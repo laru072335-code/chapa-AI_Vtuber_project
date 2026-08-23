@@ -131,7 +131,7 @@ async def main():
 
     #ここ起動するソフトを動的に変えれるようにする
     if sys.platform.startswith("win"):
-        await booting.Window_open_other_app(setting_data["voicevox_path"],setting_data["socialstream_path"]) 
+        await booting.Window_open_other_app(setting_data.SoundEngine_path,setting_data.socialstream_path) 
     elif sys.platform.startswith("darwin"):
         await booting.Mac_open_other_app()
     else:
