@@ -1,0 +1,5 @@
+{
+    "python.defaultInterpreterPath": ".pixi/envs/default/bin/python3.13",
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.defaultPackageManager": "ms-python.python:pip",
+}
