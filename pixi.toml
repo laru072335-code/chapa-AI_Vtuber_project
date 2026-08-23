@@ -1,0 +1,93 @@
+[workspace]
+name = "chapa-env"
+version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "win-64","linux-64"]
+
+[dependencies]
+python = "3.13.*"
+numpy = "*"
+msgpack-python = "*" 
+httpx = "*"
+websockets = "*"
+onnx = "*" #一応、動かなかったらこれ指定">=1.21.0,<2"
+onnxscript = "*" #一応、動かなかったらこれ指定">=0.7.0,<0.8"
+tokenizers = "<0.23.1"
+hdbscan="*"
+supabase="*"
+certifi="*"
+#zig="*" #Mac以外でおそらく必要
+#pip="*" #Mac以外でおそらく必要
+
+
+[pypi-dependencies]
+ollama = "*"
+sounddevice="*"
+soundfile = "*"
+onnxruntime = "*"
+dotenv="*"
+ulid-py="*"
+
+
+[feature.test.pypi-dependencies]
+torch = "*"
+ruff= "*"
+pip-audit="*"
+pytest="*"
+pytest-asyncio="*"
+memray="*"
+
+[feature.test.dependencies]
+pyinstrument = "*"
+pandas="*"
+transformers = ">=5.3.0"
+
+[feature.build.pypi-dependencies]
+nuitka = "*" # Nuitka自体はPyPI版が最も追従が早い
+
+
+[feature.license-pip.pypi-dependencies]
+#ライセンス表示のためにpypiに全てのライブラリを集める。ほぼ[dependencies]と同じになる。
+pip-licenses = "*"
+numpy = "*"
+msgpack-python = "*" 
+httpx = "*"
+websockets = "*"
+onnx = "*" #一応、動かなかったらこれ指定">=1.21.0,<2"
+onnxscript = "*" #一応、動かなかったらこれ指定">=0.7.0,<0.8"
+tokenizers = "<0.23.1"
+
+[environments]
+default=["test","build"]
+build-env=["build"]
+license=["build","license-pip"]
+
+[tasks]
+
+build-app = { cmd = "python -m nuitka --standalone --plugin-enable=numpy --nofollow-import-to=pygments --jobs=-1 --include-package=websockets chapa_core.py", default-environment = "build-env"}
+
+build-app-windows={ cmd = "python -m nuitka --zig --standalone --plugin-enable=numpy --nofollow-import-to=pygments --jobs=-1 --include-package=websockets chapa_core.py", default-environment = "build-env"}
+#zigをいれてコンパイル
+
+comment-app={ cmd = "python -m nuitka --standalone --nofollow-import-to=pygments --include-package=websockets comments_test.py", default-environment = "build-env"}
+
+testrun="python chapa_core.py"     
+
+instrumentrun="pyinstrument -o profile.html chapa_core.py"
+memrayrun="memray run chapa_core.py"
+pip-audit="pip-audit"     
+test={ cmd ="pytest -v -s --tb=long",env = { KMP_DUPLICATE_LIB_OK = "TRUE" }}
+check="ruff check"
+comment="python comments_test.py"
+license={cmd="pip-licenses --with-license-file --format=plain-vertical --output-file LICENSE.txt && python clean_license_file.py",default-environment = "build-env"}
+
+
+#pixi install
+#pixi install -e build-env
+
+#pixi run -e build-env build-app #これはビルドする時の実行コマンド
+#pixi run pytest test_run.py::test_meaning_vector_and_emotion_vector
+
+#pixi run memray flamegraph memray-chapa_core.py.83979.bin   
+
+# python.analysis.typeCheckingModeで型チェックしたほうがいいかも
