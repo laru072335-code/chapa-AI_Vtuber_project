@@ -1,0 +1,36 @@
+name: aienv313
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.13
+  - numpy 
+  - pandas
+  - sqlite  
+  - sqlalchemy  
+  - psycopg2  
+  - requests  
+  - httpx 
+  - websockets 
+  - tqdm 
+  - joblib 
+  - scikit-learn
+  - python-dotenv  
+  - werkzeug  
+  - pip
+  - pytorch  
+  - torchvision
+  - torchaudio
+  - unidic-lite
+  - pip:
+      - kivy 
+      - bpemb 
+      - transformers 
+      - umap-learn  
+      - ollama  
+      - sounddevice 
+      - soundfile 
+      - fugashi 
+      - faiss-cpu 
+      - msgpack 
+      - google-api-python-client 
