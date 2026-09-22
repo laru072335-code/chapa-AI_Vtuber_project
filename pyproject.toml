@@ -1,0 +1,10 @@
+[tool.ruff]
+exclude = [
+    ".pixi",
+    ".git",
+    "__pycache__",
+    "Now_nouse",
+    "*.build"
+]
+[tasks]
+lint = "ruff check chapa_core.py"

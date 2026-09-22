@@ -1,0 +1,3 @@
+SESSION_KEY="" // social stream Ninjaのセッションキーの登録
+SUPABASE_URL="" //stream モードにて記憶を保存するデータベースのURL(詳しくはsupabaseのConnectを参照)
+SUPABASE_KEY="" //stream モードにて記憶を保存するデータベースのシークレットキー(詳しくはsupabaseのConnectを参照)

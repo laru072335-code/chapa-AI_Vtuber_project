@@ -1,100 +1,111 @@
-import requests
-import random
 """
-base_url = "http://localhost:11180"
-
-# サービス一覧取得
-services = requests.get(f"{base_url}/api/services").json()
-for s in services:
-    print(s["id"], s["name"])
-
+任意のコメント取得アプリまたは、それを担うメソッドにコメントを実験的に投げるためのもの
 """
 
+import asyncio
+import websockets
+import json
+import os
+from dotenv import load_dotenv
+"""Social Streamからコメント取得"""
+"""responceの例
+{'chatname': 'Steve_830970394883', 
+'nameColor': '#107516', 
+'chatbadges': '',
+'backgroundColor': '',
+'textColor': '', 
+'chatmessage': "!join The only way 2 do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle. As with all matters of the heart, you'll know when you find it.",
+'chatimg': '',
+'type': 'slack', 
+'hasDonation': '',
+'membership': 'SPONSORSHIP',
+'id': 5055,
+'timestamp': 1780895846391,
+'containsBadWords': False}
 """
-base_url = "http://localhost:11180"#わんコメ
+load_dotenv()
+SESSION_ID = os.getenv("SESSON_KEY") # From your dock.html URL
 
-service_id = "a3e074a3-85e2-43b6-aab5-827320e48245"  # 例: "626f8c47-04e4-4389-b070-bf3e60f37e38"
+import asyncio
+import httpx
 
-payload = {
-    "service": {
-        "id": service_id,
-        "write": True,
-        "speech": False,
-        "persist": False
-    },
-    "comment": {
-        "id": "unique-comment-id-2",     # 適当な一意ID
-        "userId": "unique-user-id",      # 任意
-        "name": "Python",                # 表示名
-        "badges": [],
-        "profileImage": "",
-        "comment": "Hello onecomme from Python!",
-        "hasGift": False,
-        "isOwner": False,
-        "timestamp": 0                   # 0 でも動きます
-    }
-}
-payload1 = {
-    "service": {
-        "id": service_id,
-        "write": True,
-        "speech": False,
-        "persist": False
-    },
-    "comment": {
-        "id": "unique-comment-id-7",     # 適当な一意ID
-        "userId": "unique-user-id",      # 任意
-        "name": "anko",                # 表示名
-        "badges": [],
-        "profileImage": "",
-        "comment": "exit",
-        "hasGift": False,
-        "isOwner": False,
-        "timestamp": 0                   # 0 でも動きます
-    }
-}
+# あなたのSocial Stream NinjaのセッションIDを設定
+BASE_URL = f"https://io.socialstream.ninja/{SESSION_ID}"
 
-res = requests.post(f"{base_url}/api/comments", json=payload)
-time.sleep(0.5)
-res1 = requests.post(f"{base_url}/api/comments", json=payload1)
-#print(res.status_code)
-#print(res.text)
-time.sleep(0.5)
-a=requests.get("http://localhost:11180/api/comments")
-list=a.json()
-print(list)
-comments=list[0].get("data",[])
-print(list[0]["data"]["comment"])
-print(list[0]["data"]["name"])
-print(list[1]["data"]["comment"])
-print(list[1]["data"]["name"])
-#print(comments)
-before_comment=None"""
-def comment_send(strings):
-    base_url = "http://localhost:11180"#わんコメ
-    service_id = "a3e074a3-85e2-43b6-aab5-827320e48245" 
-    id=random.randint(0,100000)
-    payloads = {
-    "service": {
-        "id": service_id,
-        "write": True,
-        "speech": False,
-        "persist": False
-    },
-    "comment": {
-        "id": f"{id}",     # 適当な一意ID
-        "userId": "unique-user-id",      # 任意
-        "name": f"{id}",                # 表示名
-        "badges": [],
-        "profileImage": "",
-        "comment": strings,
-        "hasGift": False,
-        "isOwner": False,
-        "timestamp": 0                   # 0 でも動きます
+
+async def send_chat_message(message: str):
+    """
+    外部のコメントとしてSSNのシステムに流し込む（公式ドキュメントのPOST仕様に準拠）
+    """
+    import json
+
+    # 1. まず、内側のチャットデータ（オブジェクト）を作る
+    comment_data = {
+        "chatname": "MyManualBot",      # 表示される名前
+        "chatmessage": message,         # 本文
+        "type": "manual"                # アイコンなどの識別子
     }
-                }
-    requests.post(f"{base_url}/api/comments", json=payloads)
-    
-if __name__=="__main__":
-    comment_send(input("ここにコメントを入力"))
+
+    # 2. 【重要】ドキュメントの仕様通り、内側のデータを一度「JSON文字列」に変換する
+    stringified_value = json.dumps(comment_data)
+
+    # 3. 送信する全体のJSONボディを組み立てる
+    payload = {
+        "action": "extContent",
+        "value": stringified_value  # 文字列化したデータを渡す
+    }
+
+    # 4. 【重要】POSTのURLはセッションIDまで（末尾に action や null は不要）
+    url = f"https://io.socialstream.ninja/{SESSION_ID}"
+
+    async with httpx.AsyncClient() as client:
+        try:
+            # json= 引数を使うことで、正しく application/json でPOSTされます
+            response = await client.post(url, json=payload)
+            
+            if response.status_code == 200:
+                print("-> Comment injected successfully!")
+            else:
+                print(f"-> Failed to inject comment. Status: {response.status_code}, Response: {response.text}")
+        except Exception as e:
+            print(f"-> Error injecting comment: {e}")
+
+async def listen_to_chat():
+    """
+    social streamのコメント取得のテスト
+    """
+    uri = f"wss://io.socialstream.ninja/join/{SESSION_ID}/4"  # Channel 4 receives chat
+
+    async with websockets.connect(uri) as ws:
+        print("Connected! Listening for chat messages...")
+
+        while True:
+            message = await ws.recv()
+            data = json.loads(message)
+
+            # Chat messages have 'chatname' and 'chatmessage' fields
+            if "chatname" in data:
+                print(f"[{data.get('type', 'unknown')}] {data['chatname']}: {data.get('chatmessage', '')}")
+
+                # Check for donations
+                if data.get('hasDonation'):
+                    print(f"  💰 Donation: {data['hasDonation']}")
+
+async def main():
+    # 1. チャット欄への一斉送信テスト
+    asyncio.create_task(listen_to_chat())
+    while True:
+        comment = await asyncio.to_thread(input, "送信メッセージを入力: ")
+        if comment!="exit2":
+            await send_chat_message(comment)
+        else:
+            break
+        await asyncio.sleep(0.3)
+
+
+
+# 実行
+if __name__ == "__main__":
+    asyncio.run(main())
+
 
