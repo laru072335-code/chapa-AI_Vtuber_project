@@ -11,6 +11,7 @@ from supabase import create_client, Client
 import datetime
 import os
 import requests 
+from pathlib import Path
 
 
 
@@ -177,10 +178,10 @@ class private_database(database):
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         topics TEXT NOT NULL,
         vector BLOB NOT NULL,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
         """)
         self.conn.commit()
-        with open("userprofile.json","r+",encoding="UTF-8")as f:
+        with open("userprofile.json","w",encoding="UTF-8")as f:
             data={
                 "user_name":user_name,
                 "last_updated":datetime.datetime.now().isoformat(),
@@ -188,6 +189,7 @@ class private_database(database):
 
             }
             json.dump(data,f)
+
 
     def conversation_save(self,text:str,vector:np.ndarray):
         self.cur.execute("INSERT INTO interest_records (text,vector) VALUES (?, ?)", (text, vector))

@@ -12,12 +12,13 @@ import jwt
 
 class Input_format(ABC):
     @abstractmethod
-    def __init__(self,stream_id,location:str):
+    def __init__(self,location:str,stream_id=False):
         """
         特殊な場合を除き、public かprivateで指定する
         """
         self.location=location
-        self.stream_id=stream_id
+        if stream_id:
+            self.stream_id=stream_id
         
     @abstractmethod
     async def latest_get_comment(self,*out_q : asyncio.Queue[Message]):
@@ -37,7 +38,7 @@ class socialstream_input(Input_format):
     ここに様々なものをシステムに流し込むための、準備をする。
     """
     def __init__(self,stream_id):
-        super().__init__(stream_id,"public")
+        super().__init__("public",stream_id,)
         load_dotenv()
         self.session_key=os.getenv("SESSION_KEY")
 
@@ -95,7 +96,7 @@ class Stream_input(Input_format):
 
     """
     def __init__(self, stream_id):
-        super().__init__(stream_id,"pulblic")
+        super().__init__("public",stream_id)
         self.jwt_key=os.environ.get("JWT_KEY")
 
     async def latest_get_comment(self,*out_q : asyncio.Queue[Message]):

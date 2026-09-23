@@ -80,13 +80,14 @@ class Analyze:
         "attention_mask": np.array([attention_mask], dtype=np.int64)
                     }
         output = self.interest_session.run(["logits","hidden_states"], ort_inputs) # shape (1,6)
-        logits=output[0]
-        interest=output[1]#<class 'numpy.ndarray'>
+        #print(output)
+        logits=output[0]#興味ベクトル
+        interest=output[1]#<class 'numpy.ndarray'>　感情ベクトル
         emotion_probs = np.exp(logits) / np.sum(np.exp(logits), axis=-1, keepdims=True)
         print(f"感情ベクトル:{emotion_probs}")
         #ここから下はクラスタリングする時のためのデータ保存(のちにクラスタリングをすることで興味を推定する。)
 
-        self.save_class.conversation_save(sentence)
+        self.save_class.conversation_save(sentence,logits)
 
         au_vector = self.au_session.run(["AU_vector"], {"emotion_vector": emotion_probs})
         au_list=au_vector[0].flatten().tolist()
@@ -109,5 +110,5 @@ class Analyze:
 
 #単体テスト用
 if __name__=="__main__":
-        analyze=Analyze()
-        analyze._analyze(Message(input("username"),input("content"),input("location"),input("stream_id")))    
+        analyze=Analyze("https")
+        analyze._analyze_and_memory(Message("aaa","おはよう","public",None),test= True)   

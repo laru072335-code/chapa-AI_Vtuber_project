@@ -5,14 +5,14 @@ import json
 import re
 from dataclasses import dataclass
 
-@dataclass(kw_only=True)
+@dataclass()
 class Message:
     """
     inputの形式について定めたもの
     """
-    user_name:str=None
-    content:str=None
-    location:str=None
+    user_name:str
+    content:str
+    location:str
     stream_id:int=None
 
     def __str__(self):
