@@ -36,7 +36,7 @@ class Settings:
     setting_ai_text: str
     ai_model: str
     max_queue_size: int
-    sound_output: str
+    output: str
     sd_default_device: str
     SoundEngine_path: str
     socialstream_path: str
@@ -44,6 +44,7 @@ class Settings:
     soundEngine : str 
     input_type:str
     DB_API:str
+    Public_key:str
 
     @classmethod
     def from_json(cls, path: str) -> "Settings":
@@ -55,12 +56,13 @@ class Settings:
             setting_ai_text=data["SettingAItext"],
             ai_model=data["AI_model"],
             max_queue_size=int(data["Max_queue_size"]),
-            sound_output=data["sound_output"],
+            output=data["output"],
             sd_default_device=data["sd.default.device"],
             SoundEngine_path=data["SoundEngine_path"],
             socialstream_path=data["socialstream_path"],
             LLM_Tool=data["LLM_Tool"],
             soundEngine=data["SoundEngine"],
             input_type=data["input_type"],
-            DB_API=data["DB_API"]
+            DB_API=data["DB_API"],
+            public_key=data["public_key"]
         )

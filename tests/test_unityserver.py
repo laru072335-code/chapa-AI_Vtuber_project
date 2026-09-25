@@ -4,7 +4,7 @@ import pytest
 import msgpack
 from unittest.mock import AsyncMock, MagicMock
 
-from unityserver import unityserver
+from Outputs.unityserver import unityserver
 from type_list import Message
 
 

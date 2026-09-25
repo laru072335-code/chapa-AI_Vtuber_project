@@ -3,7 +3,7 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from Input import (
+from Inputs import (
     Input_format, socialstream_input, Discord_input,
     Desktop_input, Stream_input,
 )

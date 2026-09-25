@@ -11,11 +11,10 @@ from supabase import create_client, Client
 import datetime
 import os
 import requests 
-from pathlib import Path
 
 
 
-def _clustering(llm:LLM.LLMProvider,data:list[dict[str, any]]):
+def _clustering(llm:LLM.LLMProvider,data:list[dict[str, any]])->list[dict]:
     """
     ## クラスタリング(新規作成バージョン)
     ベクトルデータを渡すとクラスタリングする
@@ -97,7 +96,7 @@ class database(ABC):
         """
 
     @abstractmethod
-    def get_comment(self):
+    def get_comment(self)->list[dict]:
         """
         クラスタリングに使用するログを取得する
         返り値は、

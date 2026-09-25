@@ -6,16 +6,15 @@
 import subprocess
 import sounddevice as sd
 from prompt_analyze import Analyze
-from unityserver import unityserver as Server
-import LLM
 import sound_engine
+import LLM
 from database_access import stream_clustering,user_clustering
 import asyncio
 import httpx
 from httpx import AsyncClient 
 import os
 from type_list import *
-import Input
+import Inputs
 import traceback
 import sys
     
@@ -32,7 +31,7 @@ class Booting:
         subprocess.run(['open','-a',"virtual_roid 0.2.app"])
         subprocess.run(["open","-a","socialstream"])
 
-    async def Window_open_other_app(self,voicevox_path,socialstream_path):
+    async def Window_open_other_app(self,voicevox_path:str,socialstream_path:str):
         """windowsでの起動について自動化したもの"""
         os.startfile(voicevox_path)
         os.startfile("virtual Roid_0.2.exe")
@@ -49,28 +48,13 @@ class Booting:
         #ここで各種設定を返すようにする。
         return setting
     
-    async def before_check(self,Client : AsyncClient,sound_engine_object : sound_engine.SoundProvider,input_object:Input.Input_format):
+    async def before_check(self,Client : AsyncClient,sound_engine_object : sound_engine.SoundProvider,input_object:Inputs.Input_format)->None:
         """
         音声合成エンジンが起動できているかの確認
+        実行が完了すると、音声合成エンジンが起動できている
         """
         while not (await sound_engine_object.is_ready(Client) and await input_object.is_ready()):
             await asyncio.sleep(0.1)
-            pass
-
-class Output:
-    """
-    様々な形でoutputするただし、Unityに送る場合の処理は、new_unityserver.pyを参照
-    """
-    def __init__(self):
-        pass
-    async def soundplay(self,in_q: asyncio.Queue):
-        """
-        音声出力のためのもの
-        """
-        while True:
-            data,rate=await in_q.get()
-            sd.play(data,rate)
-            sd.wait()
 
 class Shutdown:
     """
@@ -103,25 +87,22 @@ async def main():
     stream_name=None
     Client=AsyncClient()#非同期でhttpリクエストをなげるためのもの
     analyze=Analyze(setting_data.DB_API)
-    server=Server()
-    output=Output()
     shutdown=Shutdown()
     
-
     match  setting_data.input_type:
         case "socialstream":
             stream_id=int(input("stream_idを入力してください"))
             stream_name=input("stream_nameを入力してください")
-            inputer=Input.socialstream_input(stream_id)
+            inputer=Inputs.socialstream_input(stream_id)
 
         case "discord":
-            inputer=Input.Discord_input()
+            inputer=Inputs.Discord_input()
         case "desktop":
-            inputer=Input.Desktop_input()
+            inputer=Inputs.Desktop_input()
         case "stream":
             stream_id=int(input("stream_idを入力してください"))
             stream_name=input("stream_nameを入力してください")
-            inputer=Input.Stream_input(stream_id)
+            inputer=Inputs.Stream_input(stream_id,setting_data.Public_key)
 
         case _:
             raise ValueError("inputは現在その形式に対応していません。")
@@ -144,7 +125,6 @@ async def main():
         case _:
             raise ValueError("SoundEngineは現在、voicevox,aivisspeech,coerioinkにしか対応していません。いずれかを入力してください。")
 
-    #ここ起動するソフトを動的に変えれるようにする
     if sys.platform.startswith("win"):
         await booting.Window_open_other_app(setting_data.SoundEngine_path,setting_data.socialstream_path) 
     elif sys.platform.startswith("darwin"):
@@ -178,22 +158,30 @@ async def main():
             answer_voice_queue,
             answer_analyze_queue,
             answer_subtitle_queue)),
-        asyncio.create_task(analyze.analyze_and_memory(answer_analyze_queue,au_queue)),
-        asyncio.create_task(voice.generate_voice(
-            Client,
-            setting_data.speaker,
-            answer_voice_queue,
-            sound_play_queue,
-            viseme_queue)),
-        asyncio.create_task(server.send_viseme(viseme_queue)),
-        asyncio.create_task(server.send_subtitle(comments_subtitle_queue,answer_subtitle_queue)),
-        asyncio.create_task(server.send_au(au_queue)),
+        asyncio.create_task(analyze.analyze_and_memory(answer_analyze_queue,au_queue))
             ]
     #ここ名前を変えて要改善（余計な処理が入る感じになってしまっている。）テキストのみ、音声まで　全部でわけて考える
-    if setting_data.sound_output=="Python":
-        worker.append(asyncio.create_task(output.soundplay(sound_play_queue)))
-    if setting_data.sound_output=="Unity":
-        worker.append(asyncio.create_task(server.send_sound(sound_play_queue)))
+    match setting_data.output:
+        case"":
+            pass
+        case"Unity":
+            from Outputs.unityserver import unityserver 
+            server=unityserver()
+            worker.extend([
+                asyncio.create_task(voice.generate_voice(
+                            Client,
+                            setting_data.speaker,
+                            answer_voice_queue,
+                            sound_play_queue,
+                            viseme_queue)),
+                asyncio.create_task(server.send_viseme(viseme_queue)),
+                asyncio.create_task(server.send_subtitle(comments_subtitle_queue,answer_subtitle_queue)),
+                asyncio.create_task(server.send_au(au_queue)),
+                asyncio.create_task(server.send_sound(sound_play_queue))
+            ])
+        case _:
+            raise ValueError("outputはその方式に対応していません。音声とテキストを出力する場合、Sound、テキストのみの場合、Text、Unity(GUI)の場合、Unityに設定してください。")
+    
     print("Ctrl+Cで終了します。また、エラーが出た場合強制終了します。")
     try:
         await asyncio.gather(*worker)

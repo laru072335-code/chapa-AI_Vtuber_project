@@ -78,7 +78,7 @@ if not _can_import("type_list"):
         socialstream_path: str = "/tmp/socialstream"
         speaker: int = 1
         max_queue_size: int = 100
-        sound_output: str = "Python"
+        output: str = "Sound"
 
         @classmethod
         def from_json(cls, path):

@@ -95,9 +95,9 @@ class Stream_input(Input_format):
     """
 
     """
-    def __init__(self, stream_id):
+    def __init__(self, stream_id,public_key):
         super().__init__("public",stream_id)
-        self.jwt_key=os.environ.get("JWT_KEY")
+        self.jwt_key=public_key
 
     async def latest_get_comment(self,*out_q : asyncio.Queue[Message]):
         def recive(payload):
@@ -105,7 +105,7 @@ class Stream_input(Input_format):
             コメントを受け取った時の処理
             """
             try:
-                contents = jwt.decode(payload['key'], self.jwt_key, algorithms=["HS256"])
+                contents = jwt.decode(payload['key'], self.jwt_key, algorithms=["RS256"])
 
                 user_id = contents.get("sub")
                 user_name = contents.get("name")

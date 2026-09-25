@@ -34,6 +34,12 @@ class LLMProvider(ABC):
         """
         pass
 
+    def get_conversation(self):
+        """
+        短期記憶として会話履歴を取得するためのもの
+        """
+        pass
+
 class OllamaProvider(LLMProvider):
     """
     Ollamaでリクエストを投げるためのもの
