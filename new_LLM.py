@@ -2,8 +2,8 @@
 LLMにリクエストを投げるためのファイル
 """
 from abc import ABC, abstractmethod
-import ollama
 import json
+import litellm
 import asyncio
 import re
 import requests
@@ -16,33 +16,11 @@ class LLMProvider(ABC):
     LLMにリクエストを投げる基本形
     """
     @abstractmethod
-    def __init__(self,db_url):
+    def __init__(self,AImodel,settingtext,db_url):
         """
         ここでシステムプロンプトなどの初期設定の処理をする。
         """
         self.get_content=Get_content(db_url)
-    
-    @abstractmethod
-    async def create_comment(self,in_q:asyncio.Queue[Message],voice_q:asyncio.Queue,*out_q:asyncio.Queue[Message]):
-        """
-        応答を生成するためのメソッド
-        voice_qには句読点ごとに区切って、またout_qには回答を丸ごと入れる
-        """
-        pass
-
-    @abstractmethod
-    def create_summary(self,prompt:list):
-        """
-        クラスタ、配信、ユーザーの傾向などの要約作成のためのもの
-        """
-        pass
-
-class OllamaProvider(LLMProvider):
-    """
-    Ollamaでリクエストを投げるためのもの
-    """
-    def __init__(self,db_url:str,AImodel:str,settingtext:str):
-        super().__init__(db_url)
         self.AImodel=AImodel
         responce=requests.get(url=f"{self.db_url}/system_prompt")
         responce.json()
@@ -53,6 +31,43 @@ class OllamaProvider(LLMProvider):
             f.seek(0)
             json.dump(data,f,ensure_ascii=False)
             f.truncate()
+    
+    @abstractmethod
+    async def create_comment(self,in_q:asyncio.Queue[Message],voice_q:asyncio.Queue,*out_q:asyncio.Queue[Message]):
+        """
+        応答を生成するためのメソッド
+        voice_qには句読点ごとに区切って、またout_qには回答を丸ごと入れる
+        """
+        responce_comment=""
+        while True:
+            prompt = await in_q.get()  
+            prompt_str=f"{prompt.user_name}\n{prompt.content}"
+            short_memory=self.get_content.get_content(prompt.location)
+            short_memory.append({"content": prompt_str, "role": "user"})
+            response=await litellm.acompletion(
+                model=self.model,
+                messages=short_memory,
+                stream=True
+            )
+            async for chunk in response:
+                print(responce_comment+chunk.choices[0].delta.content)
+                print(chunk.choices[0].delta.content or "", end="")
+            
+
+
+    @abstractmethod
+    def create_summary(self,prompts:list):
+        """
+        クラスタ、配信、ユーザーの傾向などの要約作成のためのもの
+        """
+        message=[]
+        for prompt in prompts:
+            
+
+class OllamaProvider(LLMProvider):
+    """
+    Ollamaでリクエストを投げるためのもの
+    """
        
     async def create_comment(self,in_q:asyncio.Queue[Message],voice_q:asyncio.Queue,*out_q:asyncio.Queue[Message]):
         """
@@ -98,20 +113,6 @@ class OllamaProvider(LLMProvider):
         return answer
 
     def create_summary(self,prompt:list):
-        raise NotImplementedError
-
-
-class vLLMProvider(LLMProvider):
-    """
-    実装予定
-    """
-    async def create_comment(self,in_q:asyncio.Queue[Message],voice_q:asyncio.Queue,*out_q:asyncio.Queue[Message]):
-        print("現在未実装")
-
-    def create_summary(self,prompt:list):
-        raise NotImplementedError
-
-    def __init__(self):
         raise NotImplementedError
 
 

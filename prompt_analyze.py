@@ -21,6 +21,7 @@ class Analyze:
     """
     プロンプト分析や、表情生成についてまとめたもの
     tableは開くテーブルの名前
+    db_urlは外部のデーターベースに保存するときのAPIのurl
     """
     def __init__(self,db_url):
         self.interest_session = self.create_onnx_session("ModernBERT-basemodel.onnx")

@@ -10,10 +10,11 @@ class Message:
     """
     inputの形式について定めたもの
     """
-    user_name:str
-    content:str
-    location:str
-    stream_id:int=None
+    user_name:str #ユーザーの名前
+    content:str #コンテンツ　将来は画像データとかも入る
+    type:str #コンテンツのデータがテキストか画像かなどを指定
+    location:str #そのコメントの権限について
+    stream_id:int=None #配信id
 
     def __str__(self):
         return f"username{self.user_name}\ncontent{self.content}\nlocation{self.location}\nstream_id{self.stream_id}"

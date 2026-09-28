@@ -54,7 +54,7 @@ def stream_clustering(llm:LLM.LLMProvider,stream_id:int,stream_name:str):
     配信データのクラスタリング
     """
     database=stream_database()
-    data=database.get_comment()
+    data=database.user_get_comment()
     stream_summary=llm.create_summary([i["text"]for i in data])
     clustering_result=_clustering(llm,data)
     database.memory_update(stream_id,stream_name,stream_summary,clustering_result)
@@ -64,13 +64,13 @@ def user_clustering(llm:LLM.LLMProvider,db_url:str):
     ユーザーデータのクラスタリング
     """
     database1=public_database(db_url,)
-    data:list=database1.get_comment()
+    data:list=database1.user_get_comment("summary")
     clustering_result=_clustering(llm,data)
     user_summary=llm.create_summary([i["text"]for i in data])
     database1.memory_update(user_summary,clustering_result)
 
     database2=private_database()
-    data2=database2.get_comment()
+    data2=database2.user_get_comment("summary")
     data.extend(data2)
     user_summary=llm.create_summary([i["text"]for i in data])
     clustering_result=_clustering(llm,data)
@@ -96,11 +96,14 @@ class database(ABC):
         """
 
     @abstractmethod
-    def get_comment(self)->list[dict]:
+    def user_get_comment(self,mode:str)->list[dict]:
         """
         クラスタリングに使用するログを取得する
         返り値は、
-        [{"text":str,"vector":vector}...]にする。
+        [{"text":str,"vector":vector}...]にする。\n
+        modeは、要約のためのコメント取得なのか、短期記憶(ログ)のためのものなのか指定する
+        - summaryと入力すると、要約用
+        - logと入力すると、短期記憶(ログ)用
         """
         pass
 
@@ -136,7 +139,10 @@ class stream_database(database):
         """
         raise NotImplementedError
 
-    def get_comment(self,stream_id:int):
+    def user_get_comment(self,stream_id:int):
+        """
+        配信に対するデータ処理をするときは、stream_idで取得する方法のみに対応(場合分けする必要がないため)
+        """
         return self.supabase.table('interest_records').select('text','vector').eq('stream_id',stream_id).execute()
 
     def memory_update(self,stream_id:int,stream_name:str,stream_summary:str,topic_data:dict):
@@ -217,10 +223,17 @@ class private_database(database):
         self.conn.commit()
         self.conn.close()
 
-    def get_comment(self):
-        self.cur.execute("SELECT text, vector FROM interest_records WHERE created_at >= datetime('now', '-24 hours');")
-        rows =self.cur.fetchall()
-        return rows
+    def user_get_comment(self,mode:str):
+        if mode=="summary":
+            self.cur.execute("SELECT text, vector FROM interest_records WHERE created_at >= datetime('now', '-24 hours');")
+            rows =self.cur.fetchall()
+            return rows
+        elif mode=="log":
+            self.cur.execute("SELECT text, vector FROM interest_records WHERE created_at >= datetime('now', '-24 hours');")
+            rows =self.cur.fetchall()
+            return rows
+        else:
+            raise ValueError("modeに変な値が入っています。")
 
 
 class public_database(database):
@@ -259,18 +272,29 @@ class public_database(database):
                                 headers={
                                         "Authorization": f"Bearer {self.token}"
                                         }
-                                ,json=user_summary)
+                                ,json={"profile_summary":user_summary})
     
     def search(self,**con):
         pass
 
-    def get_comment(self):
-        responce=requests.get(
-                        url=f"{self.db_url}/user_get_comments",
-                        headers={
-                                "Authorization": f"Bearer {self.token}"
-                                })
-        return responce.json()
+    def user_get_comment(self,mode:str):
+        if mode=="summary":
+            responce=requests.get(
+                            url=f"{self.db_url}/user_get_comments",
+                            headers={
+                                    "Authorization": f"Bearer {self.token}"
+                                    })
+            return responce.json()
+        elif mode=="log":
+            responce=requests.get(
+                            url=f"{self.db_url}/user_get_comments",
+                            headers={
+                                    "Authorization": f"Bearer {self.token}"
+                                    })
+            return responce.json()
+        else:
+            raise ValueError("modeに変な値が入っています。")
+
     
 class Save_anythings():
     """
@@ -292,4 +316,20 @@ class Save_anythings():
         else:
             raise ValueError("locationに不明な値があります。")
 
+class Get_content():
+    """
+    短期記憶を確保するためのもの
+    """
+    def __init__(self,db_url):
+        self.private_database=private_database("memory.db")
+        self.public_database=public_database(db_url)
+
+    def get_content(self,location:str)->list[dict]:
+        if location.startswith("private"):
+            private_comment_list=self.private_database.user_get_comment()
+            public_comment_list=self.public_database.user_get_comment()
+        elif location.startswith("public"):
+            public_comment_list=self.public_database.user_get_comment()
+        else:
+            raise ValueError("locationに不明な値があります")
    
