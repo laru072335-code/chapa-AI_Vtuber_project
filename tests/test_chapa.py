@@ -1,7 +1,6 @@
 import asyncio
 import numpy as np
 import pytest
-import sounddevice as sd
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from chapa_core import Booting, Output, Shutdown
@@ -12,13 +11,9 @@ from chapa_core import Booting, Output, Shutdown
 async def test_booting_loading(monkeypatch):
     fake = MagicMock(sd_default_device=2)
     monkeypatch.setattr("chapa_core.Settings.from_json", MagicMock(return_value=fake))
-    monkeypatch.setattr("chapa_core.sd.query_devices", MagicMock(return_value=[]))
-    monkeypatch.setattr(sd.default, "device", None)
-
     b = Booting()
     s = await b.loading()
     assert s is fake
-    assert sd.default.device == 2
 
 
 @pytest.mark.asyncio

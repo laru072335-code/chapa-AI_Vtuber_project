@@ -91,16 +91,15 @@ async def main():
     
     match  setting_data.input_type:
         case "socialstream":
-            stream_id=int(input("stream_idを入力してください"))
+            stream_id=int(input("stream_idを入力してください 0は入力しないでください"))
             stream_name=input("stream_nameを入力してください")
             inputer=Inputs.socialstream_input(stream_id)
-
         case "discord":
             inputer=Inputs.Discord_input()
         case "desktop":
             inputer=Inputs.Desktop_input()
         case "stream":
-            stream_id=int(input("stream_idを入力してください"))
+            stream_id=int(input("stream_idを入力してください 0は入力しないでください"))
             stream_name=input("stream_nameを入力してください")
             inputer=Inputs.Stream_input(stream_id,setting_data.Public_key)
 
@@ -109,12 +108,12 @@ async def main():
         
     match setting_data.LLM_Tool:
         case "ollama":
-            llm=LLM.OllamaProvider(setting_data.ai_model,setting_data.setting_ai_text)
+            llm=LLM.OllamaProvider(setting_data.DB_API,setting_data.ai_model,setting_data.setting_ai_text)
         case "vLLM":
             llm=LLM.vLLMProvider()
         case _:
             raise ValueError("LLM_Toolは,現在、ollamaとvLLM(未実装)にしか対応していません。どちらかを入力してください。")
-        
+
     match setting_data.soundEngine:
         case "voicevox":
             voice=sound_engine.VOICEVOXProvider()
@@ -124,7 +123,7 @@ async def main():
             voice=sound_engine.COEIROINKProvider()
         case _:
             raise ValueError("SoundEngineは現在、voicevox,aivisspeech,coerioinkにしか対応していません。いずれかを入力してください。")
-
+    
     if sys.platform.startswith("win"):
         await booting.Window_open_other_app(setting_data.SoundEngine_path,setting_data.socialstream_path) 
     elif sys.platform.startswith("darwin"):
@@ -147,38 +146,42 @@ async def main():
 
     #処理の流れ順に記述。
     worker=[
-        asyncio.create_task(server.main()),
-        asyncio.create_task(inputer.latest_get_comment(
-            comments_answer_queue,
-            comments_analyze_queue,
-            comments_subtitle_queue)),
-        asyncio.create_task(analyze.analyze_and_memory(comments_analyze_queue)),
-        asyncio.create_task(llm.create_comment(
-            comments_answer_queue,
-            answer_voice_queue,
-            answer_analyze_queue,
-            answer_subtitle_queue)),
-        asyncio.create_task(analyze.analyze_and_memory(answer_analyze_queue,au_queue))
+        
             ]
     #ここ名前を変えて要改善（余計な処理が入る感じになってしまっている。）テキストのみ、音声まで　全部でわけて考える
     match setting_data.output:
         case"":
-            pass
+            
+            worker=[
+
+            ]
         case"Unity":
             from Outputs.unityserver import unityserver 
             server=unityserver()
-            worker.extend([
+            worker=[
+                asyncio.create_task(server.main()),
+                asyncio.create_task(inputer.latest_get_comment(
+                    comments_answer_queue,
+                    comments_analyze_queue,
+                    comments_subtitle_queue)),
+                asyncio.create_task(analyze.analyze_and_memory(comments_analyze_queue)),
+                asyncio.create_task(llm.create_comment(
+                    comments_answer_queue,
+                    answer_voice_queue,
+                    answer_analyze_queue,
+                    answer_subtitle_queue)),
+                asyncio.create_task(analyze.analyze_and_memory(answer_analyze_queue,au_queue)),
                 asyncio.create_task(voice.generate_voice(
-                            Client,
-                            setting_data.speaker,
-                            answer_voice_queue,
-                            sound_play_queue,
-                            viseme_queue)),
+                    Client,
+                    setting_data.speaker,
+                    answer_voice_queue,
+                    sound_play_queue,
+                    viseme_queue)),
                 asyncio.create_task(server.send_viseme(viseme_queue)),
                 asyncio.create_task(server.send_subtitle(comments_subtitle_queue,answer_subtitle_queue)),
                 asyncio.create_task(server.send_au(au_queue)),
                 asyncio.create_task(server.send_sound(sound_play_queue))
-            ])
+            ]
         case _:
             raise ValueError("outputはその方式に対応していません。音声とテキストを出力する場合、Sound、テキストのみの場合、Text、Unity(GUI)の場合、Unityに設定してください。")
     
