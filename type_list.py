@@ -48,20 +48,25 @@ class Settings:
     @classmethod
     def from_json(cls, path: str) -> "Settings":
         with open(path, "r", encoding="utf-8") as f:
-            content = re.sub(r'//.*', '', f.read())
+            content = re.sub(r'(?<!:)\/\/.*', '', f.read())
             data = json.loads(content)
+        # type_list.py での読み込みイメージ
+        key_path = data.get("public_key_path", "public_key.pem")
+        public_key_str=""
+        with open(key_path, "r", encoding="utf-8") as key_file:
+            public_key_str = key_file.read()
         return cls(
             speaker=int(data["Speaker"]),
             setting_ai_text=data["SettingAItext"],
             ai_model=data["AI_model"],
             max_queue_size=int(data["Max_queue_size"]),
-            output=data["output"],
+            output=data["Output"],
             SoundEngine_path=data["SoundEngine_path"],
-            socialstream_path=data["socialstream_path"],
+            socialstream_path=data["Socialstream_path"],
             soundEngine=data["SoundEngine"],
-            input_type=data["input_type"],
+            input_type=data["Input_type"],
             DB_API=data["DB_API"],
-            public_key=data["public_key"]
+            Public_key=public_key_str
         )
 
 @dataclass

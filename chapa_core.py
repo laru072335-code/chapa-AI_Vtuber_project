@@ -4,11 +4,10 @@
 メモ:トークンで終了するようにしたい
 """
 import subprocess
-import sounddevice as sd
 from prompt_analyze import Analyze
 import sound_engine
-import new_LLM
-from database_access import stream_clustering,user_clustering
+from new_LLM import LLMProvider
+from database_utilities import Clustering
 import asyncio
 import httpx
 from httpx import AsyncClient 
@@ -85,6 +84,7 @@ async def main():
     stream_name=None
     Client=AsyncClient()#非同期でhttpリクエストをなげるためのもの
     analyze=Analyze(setting_data.DB_API)
+    llm=LLMProvider(setting_data.ai_model,setting_data.setting_ai_text,setting_data.DB_API)
     shutdown=Shutdown()
     
     match  setting_data.input_type:
@@ -191,9 +191,9 @@ async def main():
         #この下はv0.3で使う
         print("記憶整理開始")
         if stream_id:
-            stream_clustering(llm,stream_id,stream_name)
+            Clustering.stream_clustering(llm,stream_id,stream_name)
         else:
-            user_clustering(llm,setting_data.DB_API)
+            Clustering.user_clustering(llm,setting_data.DB_API)
 
     except httpx.ReadTimeout:
         print("接続がタイムアウトしました。パソコンのスペックが足りていないか、リクエストの数が多すぎます。")

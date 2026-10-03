@@ -1,29 +1,27 @@
 """
 LLMにリクエストを投げるためのファイル
 """
-from abc import ABC, abstractmethod
 import json
 import litellm
 import asyncio
 import re
 import requests
 from type_list import *
-import copy
-from database_access import Get_content
+from database_utilities import Get_content
 
-class LLMProvider(ABC):
+class LLMProvider():
     """
     LLMにリクエストを投げる基本形
     """
-    @abstractmethod
     def __init__(self,AImodel,settingtext,db_url):
         """
         ここでシステムプロンプトなどの初期設定の処理をする。
         """
         self.get_content=Get_content(db_url)
         self.AImodel=AImodel
-        responce=requests.get(url=f"{self.db_url}/system_prompt")
-        responce.json()
+        responce=requests.get(url=f"{db_url}/system_prompt")
+        data=responce.json()
+        print(data)
         with open("conversation.json","r+",encoding="UTF-8")as f:
             data=json.load(f)
             if not data[0]["content"]["text"] == settingtext:
@@ -32,7 +30,6 @@ class LLMProvider(ABC):
             json.dump(data,f,ensure_ascii=False)
             f.truncate()
     
-    @abstractmethod
     async def create_comment(self,in_q:asyncio.Queue[Message],voice_q:asyncio.Queue,*out_q:asyncio.Queue[Message]):
         """
         応答を生成するためのメソッド
@@ -54,7 +51,6 @@ class LLMProvider(ABC):
             
 
 
-    @abstractmethod
     def create_summary(self,prompts:list)->str:
         """
         クラスタ、配信、ユーザーの傾向などの要約作成のためのもの

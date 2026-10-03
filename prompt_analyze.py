@@ -9,13 +9,8 @@ import numpy as np
 from tokenizers import Tokenizer
 import onnxruntime as ort
 import asyncio
-from database_access import Save_anythings
+from database_utilities import Save_anythings
 from type_list import *
-
-
-#書き込みの部分を別関数にした方がいいかも(同時に書き込むのを防ぐため)
-
-
 
 class Analyze:
     """
