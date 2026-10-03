@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import hdbscan
-import LLM
+import new_LLM
 from type_list import *
 import sqlite3
 from supabase import create_client, Client
@@ -14,19 +14,18 @@ import requests
 
 
 
-def _clustering(llm:LLM.LLMProvider,data:list[dict[str, any]])->list[dict]:
+def _clustering(llm:new_LLM.LLMProvider,data:list[Comment])->list[clustering_result]:
     """
     ## クラスタリング(新規作成バージョン)
     ベクトルデータを渡すとクラスタリングする
     - llm LLMを内部で使用するためのインスタンスを渡す
-    - data [{"text":,"vector":}...]
-    返り値は、{"topics":summary,"vector":centroid}のリスト
+    返り値は、{"topic":summary,"vector":centroid}のリスト
     """
     return_list=[]
     if llm==None:
         raise ValueError("このメソッドを使用する場合はllmの値を入力してください")
-    recive_vector=[i["vector"]for i in data]#ベクトルデータだけをとりだす。
-    recive_text=[i["text"]for i in data]#テキストデータだけ取り出す
+    recive_vector=[i.vector for i in data]#ベクトルデータだけをとりだす。
+    recive_text=[i.text for i in data]#テキストデータだけ取り出す
     vectors= [json.loads(i) for i in recive_vector]#ベクトルデータをnumpy型に変換(str->float->numpy)
     vectors=np.array(vectors,dtype=np.float32)
     
@@ -46,10 +45,10 @@ def _clustering(llm:LLM.LLMProvider,data:list[dict[str, any]])->list[dict]:
         centroid = np.mean(cluster_vecs, axis=0)
         centroid = centroid / np.linalg.norm(centroid)
         summary=llm.create_summary(cluster_items)
-        return_list.append({"topics":summary,"vector":centroid})
+        return_list.append(clustering_result(summary,centroid))
     return return_list
 
-def stream_clustering(llm:LLM.LLMProvider,stream_id:int,stream_name:str):
+def stream_clustering(llm:new_LLM.LLMProvider,stream_id:int,stream_name:str):
     """
     配信データのクラスタリング
     """
@@ -59,7 +58,7 @@ def stream_clustering(llm:LLM.LLMProvider,stream_id:int,stream_name:str):
     clustering_result=_clustering(llm,data)
     database.memory_update(stream_id,stream_name,stream_summary,clustering_result)
 
-def user_clustering(llm:LLM.LLMProvider,db_url:str):
+def user_clustering(llm:new_LLM.LLMProvider,db_url:str):
     """
     ユーザーデータのクラスタリング
     """
@@ -96,14 +95,12 @@ class database(ABC):
         """
 
     @abstractmethod
-    def user_get_comment(self,mode:str)->list[dict]:
+    def user_get_comment(self,mode:str)->list[Comment]:
         """
-        クラスタリングに使用するログを取得する
-        返り値は、
-        [{"text":str,"vector":vector}...]にする。\n
+        クラスタリングまたは、短期記憶に使用するログを取得する\n
         modeは、要約のためのコメント取得なのか、短期記憶(ログ)のためのものなのか指定する
         - summaryと入力すると、要約用
-        - logと入力すると、短期記憶(ログ)用
+        - logと入力すると、短期記憶(ログ)用(直近30件)
         """
         pass
 
@@ -143,17 +140,23 @@ class stream_database(database):
         """
         配信に対するデータ処理をするときは、stream_idで取得する方法のみに対応(場合分けする必要がないため)
         """
-        return self.supabase.table('interest_records').select('text','vector').eq('stream_id',stream_id).execute()
+        return self.supabase.table('interest_records').select("text,vector").eq('stream_id',stream_id).execute()
 
-    def memory_update(self,stream_id:int,stream_name:str,stream_summary:str,topic_data:dict):
+    def memory_update(self,stream_id:int,stream_name:str,stream_summary:str,topic_data:list[clustering_result]):
         data={
                 "stream_id":stream_id,
                 "stream_name":stream_name,
                 "summary":stream_summary
             }
         self.supabase.table('stream_summary').insert(data).execute()
+        data=[]
         for topic in topic_data:
-            self.supabase.table('topic_cluster').insert(topic).execute()
+            data.append({
+                "topic":topic.topic,
+                "vector":topic.vector,
+            })
+
+        self.supabase.table('topic_cluster').insert(data).execute()
 
     def search(self,**con):
         pass
@@ -181,7 +184,7 @@ class private_database(database):
         self.cur.execute("""
         CREATE TABLE IF NOT EXISTS topic_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        topics TEXT NOT NULL,
+        topic TEXT NOT NULL,
         vector BLOB NOT NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
         """)
@@ -200,7 +203,7 @@ class private_database(database):
         self.cur.execute("INSERT INTO interest_records (text,vector) VALUES (?, ?)", (text, vector))
         self.conn.commit()
     
-    def memory_update(self,user_summary:str,topic_data:dict):
+    def memory_update(self,user_summary:str,topic_data:list[clustering_result]):
         with open("userprofile.json","r+",encoding="UTF-8")as f:
             data=json.load(f)
             data["profile_summary"]=user_summary
@@ -208,10 +211,9 @@ class private_database(database):
             f.seek(0)
             json.dump(data,f)
             f.truncate()
-        for topic in topic_data:
-            self.cur.execute("INSERT INTO topic_history (topics,vector) VALUES (?, ?)", (topic["topics"], topic["vector"]))
-            self.conn.commit()
-        
+        data = [(topics.topic, topics.vector) for topics in topic_data]
+        self.cur.executemany("INSERT INTO topic_history (topic, vector) VALUES (?, ?)",data)
+        self.conn.commit()
     
     def search(self,**con):
         pass
@@ -224,10 +226,14 @@ class private_database(database):
         self.conn.close()
 
     def user_get_comment(self,mode:str):
+        return_response=[]
         if mode=="summary":
             self.cur.execute("SELECT text, vector FROM interest_records WHERE created_at >= datetime('now', '-24 hours');")
             rows =self.cur.fetchall()
-            return rows
+            for row in rows:
+                return_response.append(Comment(row["text"],rows["vector"]))
+
+            return return_response
         elif mode=="log":
             self.cur.execute("SELECT text, vector FROM interest_records WHERE created_at >= datetime('now', '-24 hours');")
             rows =self.cur.fetchall()
@@ -258,15 +264,14 @@ class public_database(database):
                         "location": location
                         })
     
-    def memory_update(self,user_summary:str,topic_data:dict):
+    def memory_update(self,user_summary:str,topic_data:list[clustering_result]):
 
-        for topic in topic_data:
-            responce=requests.post(
+        responce=requests.post(
                         url=f"{self.db_url}/user_topic_save",
                         headers={
                                 "Authorization": f"Bearer {self.token}"
                                 }
-                        ,json=topic)
+                        ,json=topic_data)
         responce=requests.post(
                                 url=f"{self.db_url}/user_profile_update",
                                 headers={
@@ -326,10 +331,14 @@ class Get_content():
 
     def get_content(self,location:str)->list[dict]:
         if location.startswith("private"):
-            private_comment_list=self.private_database.user_get_comment()
-            public_comment_list=self.public_database.user_get_comment()
+            private_comment_list=self.private_database.user_get_comment("log")
+            public_comment_list=self.public_database.user_get_comment("log")
         elif location.startswith("public"):
-            public_comment_list=self.public_database.user_get_comment()
+            public_comment_list=self.public_database.user_get_comment("log")
         else:
             raise ValueError("locationに不明な値があります")
    
+if __name__=="__main__":
+    private_database1=private_database("memory.db")
+    public_database1=public_database("https://chapa-api-three.vercel.app")
+    

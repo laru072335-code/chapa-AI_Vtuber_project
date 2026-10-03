@@ -26,8 +26,8 @@ class LLMProvider(ABC):
         responce.json()
         with open("conversation.json","r+",encoding="UTF-8")as f:
             data=json.load(f)
-            if not data[0]["content"] == settingtext:
-                data[0]["content"] =settingtext
+            if not data[0]["content"]["text"] == settingtext:
+                data[0]["content"]["text"] =settingtext
             f.seek(0)
             json.dump(data,f,ensure_ascii=False)
             f.truncate()
@@ -41,9 +41,8 @@ class LLMProvider(ABC):
         responce_comment=""
         while True:
             prompt = await in_q.get()  
-            prompt_str=f"{prompt.user_name}\n{prompt.content}"
             short_memory=self.get_content.get_content(prompt.location)
-            short_memory.append({"content": prompt_str, "role": "user"})
+            short_memory.append({"content": prompt.content, "name":prompt.user_name,"role":"user"})
             response=await litellm.acompletion(
                 model=self.model,
                 messages=short_memory,
@@ -56,14 +55,18 @@ class LLMProvider(ABC):
 
 
     @abstractmethod
-    def create_summary(self,prompts:list):
+    def create_summary(self,prompts:list)->str:
         """
         クラスタ、配信、ユーザーの傾向などの要約作成のためのもの
+        promptsはget_content
         """
-        message=[]
-        for prompt in prompts:
-            
+        responce=litellm.completion(
+            model=self.model,
+            messages=prompts,
+            stream=True
+        )
 
+            
 class OllamaProvider(LLMProvider):
     """
     Ollamaでリクエストを投げるためのもの
@@ -88,32 +91,5 @@ class OllamaProvider(LLMProvider):
             for ans in answers:
                 works.append(asyncio.create_task(voice_q.put(ans)))
             await asyncio.gather(*works)    
-      
-    def _ollama_LLM_comments(self,content:str,location:str)->str:
-        """
-        LLMにプロンプトを入力することで回答を得る関数
-
-        """
-        #ここからLLMの処理        
-        data2 =[]  
-        with open("conversation.json","r",encoding="UTF-8")as f:
-            data=json.load(f)
-        data2=copy.deepcopy(data)
-        data2.append({"role":"user","content":content}) 
-        response = ollama.chat(model=self.AImodel,messages=data2)
-            #resposeの構造
-            #model='dsasai/llama3-elyza-jp-8b' created_at='2026-02-02T04:49:16.342579Z' done=True done_reason='stop' total_duration=23217746583 load_duration=18368811750 prompt_eval_count=47 prompt_eval_duration=4350540167 eval_count=5 eval_duration=474448249 message=Message(role='assistant', content='おはようございます', thinking=None, images=None, tool_name=None, tool_calls=None) logprobs=None
-        answer = response["message"]["content"]
-        data2.append({"role":"assistant","content":answer}) 
-        with open("conversation.json","w",encoding="UTF-8")as f:
-            f.seek(0)
-            json.dump(data2,f,ensure_ascii=False)
-            f.truncate()
-        print(f"LLMの答え生成完了：{answer}")
-        return answer
-
-    def create_summary(self,prompt:list):
-        raise NotImplementedError
-
 
 

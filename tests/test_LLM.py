@@ -3,7 +3,7 @@ import json
 import pytest
 from unittest.mock import MagicMock
 
-from LLM import LLMProvider, OllamaProvider, vLLMProvider
+from new_LLM import LLMProvider
 from type_list import Message
 
 

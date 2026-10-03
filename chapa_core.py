@@ -7,7 +7,7 @@ import subprocess
 import sounddevice as sd
 from prompt_analyze import Analyze
 import sound_engine
-import LLM
+import new_LLM
 from database_access import stream_clustering,user_clustering
 import asyncio
 import httpx
@@ -43,8 +43,6 @@ class Booting:
         設定の読み込みを行うもの
         """
         setting=Settings.from_json("setting.jsonc")
-        sd.default.device = setting.sd_default_device
-        print(sd.query_devices())
         #ここで各種設定を返すようにする。
         return setting
     
@@ -106,13 +104,6 @@ async def main():
         case _:
             raise ValueError("inputは現在その形式に対応していません。")
         
-    match setting_data.LLM_Tool:
-        case "ollama":
-            llm=LLM.OllamaProvider(setting_data.DB_API,setting_data.ai_model,setting_data.setting_ai_text)
-        case "vLLM":
-            llm=LLM.vLLMProvider()
-        case _:
-            raise ValueError("LLM_Toolは,現在、ollamaとvLLM(未実装)にしか対応していません。どちらかを入力してください。")
 
     match setting_data.soundEngine:
         case "voicevox":

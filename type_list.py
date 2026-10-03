@@ -38,10 +38,8 @@ class Settings:
     ai_model: str
     max_queue_size: int
     output: str
-    sd_default_device: str
     SoundEngine_path: str
     socialstream_path: str
-    LLM_Tool : str
     soundEngine : str 
     input_type:str
     DB_API:str
@@ -58,12 +56,26 @@ class Settings:
             ai_model=data["AI_model"],
             max_queue_size=int(data["Max_queue_size"]),
             output=data["output"],
-            sd_default_device=data["sd.default.device"],
             SoundEngine_path=data["SoundEngine_path"],
             socialstream_path=data["socialstream_path"],
-            LLM_Tool=data["LLM_Tool"],
             soundEngine=data["SoundEngine"],
             input_type=data["input_type"],
             DB_API=data["DB_API"],
             public_key=data["public_key"]
         )
+
+@dataclass
+class Comment:
+    """
+    database_accessでコメント（ユーザー)
+    """
+    text:str
+    vector:list[float]
+
+@dataclass
+class clustering_result:
+    """
+    database_accessのclusteringのクラスタの結果
+    """
+    topic:str
+    vector:list[float]
