@@ -83,7 +83,7 @@ async def main():
     stream_id=None
     stream_name=None
     Client=AsyncClient()#非同期でhttpリクエストをなげるためのもの
-    analyze=Analyze(setting_data.DB_API)
+    analyze=Analyze(setting_data.DB_API,setting_data.WEB_URL)
     llm=LLMProvider(setting_data.ai_model,setting_data.setting_ai_text,setting_data.DB_API)
     shutdown=Shutdown()
     

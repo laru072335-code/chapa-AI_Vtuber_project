@@ -18,11 +18,11 @@ class Analyze:
     tableは開くテーブルの名前
     db_urlは外部のデーターベースに保存するときのAPIのurl
     """
-    def __init__(self,db_url):
+    def __init__(self,db_url,web_url):
         self.interest_session = self.create_onnx_session("ModernBERT-basemodel.onnx")
         self.au_session = ort.InferenceSession("emotionToAu_v2.onnx")#このモデルはmpsに載せようとするとエラーが出る、多分opsetのバージョンが18のせい
         self.tokenizer = Tokenizer.from_file("ModernBERT-base_tokenizer.json")
-        self.save_class=Save_anythings(db_url)
+        self.save_class=Save_anythings(db_url,web_url)
 
     def create_onnx_session(self,model_path:str) ->ort.InferenceSession:
         """
@@ -52,10 +52,7 @@ class Analyze:
             sentence=await in_q.get()
             if au_vec_q:#返り値がある時だけ待つ。
                 au_vec=await loop.run_in_executor(None,lambda:self._analyze_and_memory(sentence,True,False))
-                if au_vec_q:
-                    await au_vec_q.put(au_vec)
-                else:
-                    raise ValueError("auがTrueの時、au_vec_qは必要です。")    
+                await au_vec_q.put(au_vec)
             else:
                 loop.run_in_executor(None,lambda:self._analyze_and_memory(sentence))
 
@@ -83,7 +80,7 @@ class Analyze:
         print(f"感情ベクトル:{emotion_probs}")
         #ここから下はクラスタリングする時のためのデータ保存(のちにクラスタリングをすることで興味を推定する。)
 
-        self.save_class.conversation_save(sentence,logits)
+        self.save_class.conversation_save(sentence,interest.tolist())
 
         au_vector = self.au_session.run(["AU_vector"], {"emotion_vector": emotion_probs})
         au_list=au_vector[0].flatten().tolist()
@@ -106,5 +103,10 @@ class Analyze:
 
 #単体テスト用
 if __name__=="__main__":
-        analyze=Analyze("https")
-        analyze._analyze_and_memory(Message("aaa","おはよう","public",None),test= True)   
+        analyze=Analyze("https://chapa-api-three.vercel.app")
+        analyze._analyze_and_memory(Message("aaa","おはよう","text","public"),test= True)
+        analyze._analyze_and_memory(Message("aaa","元気？","text","public"),test= True)
+        analyze._analyze_and_memory(Message("aaa","それはよかった","text","public"),test= True)
+        analyze._analyze_and_memory(Message("aaa","やった","text","public"),test= True)
+        analyze._analyze_and_memory(Message("aaa","おお","text","public"),test= True)
+        

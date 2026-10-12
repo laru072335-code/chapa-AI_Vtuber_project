@@ -9,6 +9,7 @@ from supabase import create_client, Client
 import datetime
 import os
 import requests 
+from public_database_login import login
 class DatabaseError(Exception):
     pass
 class database(ABC):
@@ -21,7 +22,7 @@ class database(ABC):
         pass
 
     @abstractmethod
-    def conversation_save(self,user_name:str,stream_id:int,text:str,vector:np.ndarray,location:str):
+    def conversation_save(self,user_name:str,stream_id:int,text:str,vector:list[float],location:str):
         """
         会話内容を保存する
         """
@@ -31,7 +32,7 @@ class database(ABC):
         """
         クラスタリングまたは、短期記憶に使用するログを取得する\n
         modeは、要約のためのコメント取得なのか、短期記憶(ログ)のためのものなのか指定する
-        - summaryと入力すると、要約用
+        - summaryと入力すると、要約用(DBのis_clusteredタグをTrueにする)
         - logと入力すると、短期記憶(ログ)用(直近30件)
         """
         pass
@@ -73,7 +74,8 @@ class stream_database(database):
         配信に対するデータ処理をするときは、stream_idで取得する方法のみに対応(場合分けする必要がないため)
         """
         response=self.supabase.table('interest_records').select("text,vector").eq('stream_id',stream_id).execute()
-        return response.data
+        return_list=[Comment(data["text"],data["vector"]) for data in response.data]
+        return return_list
 
     def memory_update(self,stream_id:int,stream_name:str,stream_summary:str,topic_data:list[clustering_result]):
         data={
@@ -112,7 +114,9 @@ class private_database(database):
         record_id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         text TEXT NOT NULL,
-        vector BLOB);
+        vector BLOB,
+        is_clustered BOOL DEFAULT FALSE,
+        is_assistant BOOL NOT NULL);
             """)
         self.cur.execute("""
         CREATE TABLE IF NOT EXISTS topic_history (
@@ -132,8 +136,9 @@ class private_database(database):
             json.dump(data,f)
 
 
-    def conversation_save(self,text:str,vector:np.ndarray):
-        self.cur.execute("INSERT INTO interest_records (text,vector) VALUES (?, ?)", (text, vector))
+    def conversation_save(self,text:str,vector:list[float],is_assistant:bool):
+        vector_bytes = np.array(vector, dtype=np.float32).tobytes()
+        self.cur.execute("INSERT INTO interest_records (text,vector,is_assistant) VALUES (?,?,?)", (text, vector_bytes,is_assistant))
         self.conn.commit()
     
     def memory_update(self,user_summary:str,topic_data:list[clustering_result]):
@@ -159,19 +164,16 @@ class private_database(database):
         self.conn.close()
 
     def user_get_comment(self,mode:str):
-        return_response=[]
         if mode=="summary":
-            self.cur.execute("SELECT text, vector FROM interest_records WHERE created_at >= datetime('now', '-24 hours');")
+            self.cur.execute("SELECT text, vector FROM interest_records WHERE is_clustered = false")
             rows =self.cur.fetchall()
-            for row in rows:
-                return_response.append(Comment(row["text"],rows["vector"]))
-
+            self.cur.execute("UPDATE interest_records SET is_clustered = true WHERE is_clustered = false")
+            return_response=[Comment(row[0],row[1])for row in rows]
             return return_response
         elif mode=="log":
-            self.cur.execute("SELECT text, vector FROM interest_records WHERE created_at >= datetime('now', '-24 hours');")
+            self.cur.execute("SELECT text, vector FROM interest_records ORDER BY timestamp DESC LIMIT 30")
             rows =self.cur.fetchall()
-            for row in rows:
-                return_response.append(Comment(row["text"],rows["vector"]))
+            return_response=[Comment(row[0],row[1])for row in rows]
             return return_response
         else:
             raise ValueError("modeに変な値が入っています。")
@@ -181,11 +183,13 @@ class public_database(database):
     """
     パブリックな会話履歴などを保存するためのもの
     """
-    def __init__(self,db_url,token=None):
+    def __init__(self,db_url:str,web_url:str):
         self.db_url=db_url
-        self.token=token
+        self.token=login(web_url)
+        if not self.token:
+            raise ValueError("tokenを取得できませんでした。")
 
-    def conversation_save(self,user_name:str,stream_id:int,text:str,vector:np.ndarray,location:str):
+    def conversation_save(self,stream_id:int,text:str,vector:list[float],location:str,is_assistant:bool):
         responce=requests.post(
                     url=f"{self.db_url}/conversation_save",
                     headers={
@@ -224,7 +228,20 @@ class public_database(database):
                             headers={
                                     "Authorization": f"Bearer {self.token}"
                                     })
-            return responce.json()
+            return_json=responce.json()
+            print(return_json)
+            return_list=[Comment(data["text"],data["vector"]) for data in return_json]
+            return return_list
 
         else:
             raise ValueError("modeに変な値が入っています。")
+
+if __name__=="__main__":
+    db=public_database("https://chapa-api-three.vercel.app")
+    #db.create_table("aaa")
+    #db.conversation_save() これはpromptanalyzeからテストしたほうがいいかも
+    p=db.user_get_comment("log")
+    print(len(p))
+    print(type(p[0]))
+    #db.memory_update()
+    #db.search()

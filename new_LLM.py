@@ -16,6 +16,7 @@ class LLMProvider():
     def __init__(self,AImodel,settingtext,db_url):
         """
         ここでシステムプロンプトなどの初期設定の処理をする。
+        ここでインターネットに繋がっているかの判定するための関数が欲しい
         """
         self.get_content=Get_content(db_url)
         self.AImodel=AImodel

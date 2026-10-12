@@ -9,5 +9,6 @@
     "SoundEngine": "voicevox", //音声合成をどのツールで動かすかを指定
     "SoundEngine_path": "", //Mac以外の場合で必要なvoicevoxのパス名
     "Input_type": "socialstream", //何の種類のinputを使うのかを指定する、この時streamを選択すると、他にも様々な設定が必要なことに注意
-    "DB_API": "https://chapa-api-three.vercel.app" //ネット上のデータベースにアクセスするためのURLを指定する
+    "DB_API": "https://chapa-api-three.vercel.app", //ネット上のデータベースにアクセスするためのURLを指定する
+    "WEB_URL": " https://commentsite.vercel.app" //ログイン処理などをしているサイト（コメントサイトのURL）
 }

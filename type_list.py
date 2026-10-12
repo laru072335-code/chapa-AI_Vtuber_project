@@ -43,7 +43,7 @@ class Settings:
     soundEngine : str 
     input_type:str
     DB_API:str
-    Public_key:str
+    WEB_URL:str
 
     @classmethod
     def from_json(cls, path: str) -> "Settings":
@@ -66,7 +66,8 @@ class Settings:
             soundEngine=data["SoundEngine"],
             input_type=data["Input_type"],
             DB_API=data["DB_API"],
-            Public_key=public_key_str
+            Public_key=public_key_str,
+            WEB_URL=data["WEB_URL"]
         )
 
 @dataclass
