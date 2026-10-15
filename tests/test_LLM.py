@@ -1,104 +1,64 @@
+"""
+new_LLM.py のテスト
+
+注意:
+- 現行実装には OllamaProvider / vLLMProvider の完全な実装は無い。
+  LLMProvider の __init__ は requests.get と conversation.json を触るため、
+  フィクスチャで I/O をモックする。
+- Get_content は内部で login → ブラウザ起動を伴うため必ずモックする。
+"""
 import asyncio
 import json
+
 import pytest
 from unittest.mock import MagicMock
 
-from new_LLM import LLMProvider
+from new_LLM import LLMProvider, OllamaProvider
 from type_list import Message
 
 
 @pytest.fixture
-def conversation_file(tmp_path, monkeypatch):
+def mocked_env(tmp_path, monkeypatch):
+    """LLMProvider.__init__ が行う I/O をモックした環境を用意"""
     monkeypatch.chdir(tmp_path)
-    p = tmp_path / "conversation.json"
-    p.write_text(json.dumps([{"role": "system", "content": "old"}]),
-                 encoding="UTF-8")
-    return p
 
-
-# ---------- ABC ----------
-def test_llm_provider_is_abstract():
-    with pytest.raises(TypeError):
-        LLMProvider()
-
-
-# ---------- OllamaProvider ----------
-def test_ollama_init_updates_system_prompt(conversation_file):
-    provider = OllamaProvider("m1", "new-system")
-    data = json.loads(conversation_file.read_text(encoding="UTF-8"))
-    assert data[0]["content"] == "new-system"
-    assert provider.AImodel == "m1"
-
-
-def test_ollama_init_keeps_when_same(conversation_file):
-    provider = OllamaProvider("m1", "old")
-    data = json.loads(conversation_file.read_text(encoding="UTF-8"))
-    assert data[0]["content"] == "old"
-
-
-@pytest.mark.asyncio
-async def test_ollama_create_comment(conversation_file, monkeypatch):
-    provider = OllamaProvider("m", "sys")
-
-    fake_response = {"message": {"content": "こんにちは。元気？"}}
-    monkeypatch.setattr("LLM.ollama.chat", MagicMock(return_value=fake_response))
-
-    in_q = asyncio.Queue()
-    voice_q = asyncio.Queue()
-    out_q = asyncio.Queue()
-    await in_q.put(Message("user", "hi", "public", 1))
-
-    task = asyncio.create_task(provider.create_comment(in_q, voice_q, out_q))
-    msg = await asyncio.wait_for(out_q.get(), timeout=2)
-    voice1 = await asyncio.wait_for(voice_q.get(), timeout=2)
-    voice2 = await asyncio.wait_for(voice_q.get(), timeout=2)
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
-
-    assert msg.content == "こんにちは。元気？"
-    assert msg.user_name == "assistant"
-    assert msg.location == "public"
-    assert msg.stream_id == 1
-    # 句読点で分割される
-    assert voice1 == "こんにちは。"
-    assert voice2 == "元気？"
-
-
-@pytest.mark.asyncio
-async def test_ollama_create_comment_appends_history(conversation_file, monkeypatch):
-    provider = OllamaProvider("m", "sys")
-    monkeypatch.setattr(
-        "LLM.ollama.chat",
-        MagicMock(return_value={"message": {"content": "OK。"}})
+    conv = tmp_path / "conversation.json"
+    conv.write_text(
+        json.dumps([{"role": "system", "content": {"text": "old"}}]),
+        encoding="UTF-8",
     )
 
-    in_q, voice_q, out_q = asyncio.Queue(), asyncio.Queue(), asyncio.Queue()
-    await in_q.put(Message("user", "hello", "public", 1))
+    fake_resp = MagicMock()
+    fake_resp.json.return_value = {"prompt": "from-api"}
+    monkeypatch.setattr(
+        "new_LLM.requests.get", MagicMock(return_value=fake_resp))
+    # Get_content は login() を呼ぶためモック
+    monkeypatch.setattr("new_LLM.Get_content", MagicMock())
 
-    task = asyncio.create_task(provider.create_comment(in_q, voice_q, out_q))
-    await asyncio.wait_for(out_q.get(), timeout=2)
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
-
-    data = json.loads(conversation_file.read_text(encoding="UTF-8"))
-    roles = [m["role"] for m in data]
-    assert "user" in roles and "assistant" in roles
+    return conv
 
 
-def test_ollama_create_summary_not_implemented(conversation_file):
-    provider = OllamaProvider("m", "sys")
-    with pytest.raises(NotImplementedError):
-        provider.create_summary(["a", "b"])
+# =====================================================================
+# __init__
+# =====================================================================
+class TestInit:
+    def test_init_stores_model(self, mocked_env):
+        p = LLMProvider("m1", "sys", "http://api", "http://web")
+        assert p.AImodel == "m1"
 
+    def test_init_updates_system_prompt_when_different(self, mocked_env):
+        LLMProvider("m1", "new-system", "http://api", "http://web")
+        data = json.loads(mocked_env.read_text(encoding="UTF-8"))
+        assert data[0]["content"]["text"] == "new-system"
 
-# ---------- vLLMProvider ----------
-def test_vllm_init_not_implemented():
-    with pytest.raises(NotImplementedError):
-        vLLMProvider()
+    def test_init_keeps_when_same(self, mocked_env):
+        LLMProvider("m1", "old", "http://api", "http://web")
+        data = json.loads(mocked_env.read_text(encoding="UTF-8"))
+        assert data[0]["content"]["text"] == "old"
 
+    def test_init_creates_get_content(self, mocked_env, monkeypatch):
+        gc_cls = MagicMock()
+        monkeypatch.setattr("new_LLM.Get_content", gc_cls)
+        LLMProvider("m1", "s", "http://api", "http://web")
+        gc_cls.assert_called_once_with("http://api", "http://web")
 
-def test_vllm_create_summary_not_implemented():
-    with pytest.raises(NotImplementedError):
-        vLLMProvider.__new__(vLLMProvider).create_summary(["a"])

@@ -1,12 +1,20 @@
+"""
+sound_engine.py のテスト
+
+- 既存テストとほぼ同等だが、非推奨な get_event_loop() を asyncio.run に置換
+- COEIROINK / Aivis の未実装は None / NotImplementedError を返すことを確認
+"""
 import asyncio
 import io
-import json
+
 import numpy as np
 import pytest
 import soundfile as sf
 from unittest.mock import AsyncMock, MagicMock
 
-from sound_engine import SoundProvider, VOICEVOXProvider, AivisProvider, COEIROINKProvider
+from sound_engine import (
+    SoundProvider, VOICEVOXProvider, AivisProvider, COEIROINKProvider,
+)
 
 
 # ---------- ヘルパ ----------
@@ -23,138 +31,134 @@ def _query_resp(phrases):
     return r
 
 
-# ---------- SoundProvider (ABC) ----------
+# ---------- ABC ----------
 def test_sound_provider_is_abstract():
     with pytest.raises(TypeError):
-        SoundProvider()  # 抽象メソッド未実装のため
+        SoundProvider()
 
 
 # ---------- VOICEVOXProvider ----------
-@pytest.mark.asyncio
-async def test_voicevox_generate_voice_basic():
-    provider = VOICEVOXProvider()
-    client = AsyncMock()
+class TestVoiceVox:
+    @pytest.mark.asyncio
+    async def test_generate_voice_basic(self):
+        provider = VOICEVOXProvider()
+        client = AsyncMock()
 
-    query_resp = _query_resp([
-        {
+        query_resp = _query_resp([{
             "moras": [
                 {"vowel": "a", "consonant_length": 0.05, "vowel_length": 0.10},
                 {"vowel": "i", "consonant_length": 0.0,  "vowel_length": 0.15},
             ]
-        }
-    ])
-    synth_resp = MagicMock(content=_wav_bytes())
-    client.post = AsyncMock(side_effect=[query_resp, synth_resp])
+        }])
+        synth_resp = MagicMock(content=_wav_bytes())
+        client.post = AsyncMock(side_effect=[query_resp, synth_resp])
 
-    in_q, sound_out_q, viseme_out_q = (asyncio.Queue(), asyncio.Queue(), asyncio.Queue())
-    await in_q.put("こんにちは")
+        in_q, sound_q, viseme_q = (
+            asyncio.Queue(), asyncio.Queue(), asyncio.Queue())
+        await in_q.put("こんにちは")
 
-    task = asyncio.create_task(
-        provider.generate_voice(client, 1, in_q, sound_out_q, viseme_out_q)
-    )
-    data, rate = await asyncio.wait_for(sound_out_q.get(), timeout=2)
-    visemes = await asyncio.wait_for(viseme_out_q.get(), timeout=2)
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
+        task = asyncio.create_task(
+            provider.generate_voice(client, 1, in_q, sound_q, viseme_q))
+        data, rate = await asyncio.wait_for(sound_q.get(), timeout=2)
+        visemes = await asyncio.wait_for(viseme_q.get(), timeout=2)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
 
-    assert rate == 24000
-    assert len(data) > 0
-    assert [v[0] for v in visemes] == ["a", "i"]
-    # 累計: 0.1 + 0.15 = 0.25, 次は 0.25+0.15 = 0.40
-    assert visemes[0][1] == pytest.approx(0.25)
-    assert visemes[1][1] == pytest.approx(0.40)
+        assert rate == 24000
+        assert len(data) > 0
+        assert [v[0] for v in visemes] == ["a", "i"]
+        # 累計時間: 0.1 + 0.15 = 0.25 → 0.25 + 0.15 = 0.40
+        assert visemes[0][1] == pytest.approx(0.25)
+        assert visemes[1][1] == pytest.approx(0.40)
 
+    @pytest.mark.asyncio
+    async def test_generate_voice_none_lengths(self):
+        provider = VOICEVOXProvider()
+        client = AsyncMock()
+        query_resp = _query_resp([{
+            "moras": [{"vowel": "N",
+                       "consonant_length": None,
+                       "vowel_length": None}]
+        }])
+        synth_resp = MagicMock(content=_wav_bytes())
+        client.post = AsyncMock(side_effect=[query_resp, synth_resp])
 
-@pytest.mark.asyncio
-async def test_voicevox_generate_voice_none_lengths():
-    """consonant_length/vowel_length が None の場合 0.0 として扱われる"""
-    provider = VOICEVOXProvider()
-    client = AsyncMock()
-    query_resp = _query_resp([
-        {"moras": [{"vowel": "N", "consonant_length": None, "vowel_length": None}]}
-    ])
-    synth_resp = MagicMock(content=_wav_bytes())
-    client.post = AsyncMock(side_effect=[query_resp, synth_resp])
+        in_q, sound_q, viseme_q = (
+            asyncio.Queue(), asyncio.Queue(), asyncio.Queue())
+        await in_q.put("ん")
 
-    in_q, sound_out_q, viseme_out_q = (asyncio.Queue(), asyncio.Queue(), asyncio.Queue())
-    await in_q.put("ん")
-    task = asyncio.create_task(
-        provider.generate_voice(client, 0, in_q, sound_out_q, viseme_out_q)
-    )
-    await asyncio.wait_for(sound_out_q.get(), timeout=2)
-    visemes = await asyncio.wait_for(viseme_out_q.get(), timeout=2)
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
+        task = asyncio.create_task(
+            provider.generate_voice(client, 0, in_q, sound_q, viseme_q))
+        await asyncio.wait_for(sound_q.get(), timeout=2)
+        visemes = await asyncio.wait_for(viseme_q.get(), timeout=2)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
 
-    assert visemes[0][0] == "n"
-    assert visemes[0][1] == pytest.approx(0.1)  # 加算なし
+        assert visemes[0][0] == "n"
+        # 加算なし → 初期値 0.1 のまま
+        assert visemes[0][1] == pytest.approx(0.1)
 
+    @pytest.mark.asyncio
+    async def test_is_ready_success(self):
+        provider = VOICEVOXProvider()
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=MagicMock(status_code=200))
+        assert await provider.is_ready(client) is True
+        assert client.get.await_count == 1
 
-@pytest.mark.asyncio
-async def test_voicevox_is_ready_success():
-    provider = VOICEVOXProvider()
-    client = AsyncMock()
-    client.get = AsyncMock(return_value=MagicMock(status_code=200))
-    assert await provider.is_ready(client) is True
-    assert client.get.await_count == 1
-
-
-@pytest.mark.asyncio
-async def test_voicevox_is_ready_failure(monkeypatch):
-    provider = VOICEVOXProvider()
-    client = AsyncMock()
-    client.get = AsyncMock(side_effect=Exception("refused"))
-    # リトライ待ちを無効化
-    monkeypatch.setattr(asyncio, "sleep", AsyncMock())
-    assert await provider.is_ready(client) is False
+    @pytest.mark.asyncio
+    async def test_is_ready_failure(self, monkeypatch):
+        provider = VOICEVOXProvider()
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=Exception("refused"))
+        monkeypatch.setattr(asyncio, "sleep", AsyncMock())
+        assert await provider.is_ready(client) is False
 
 
 # ---------- AivisProvider ----------
-@pytest.mark.asyncio
-async def test_aivis_generate_voice_basic():
-    provider = AivisProvider()
-    client = AsyncMock()
-    query_resp = _query_resp([])  # viseme は生成しない
-    synth_resp = MagicMock(content=_wav_bytes())
-    client.post = AsyncMock(side_effect=[query_resp, synth_resp])
+class TestAivis:
+    @pytest.mark.asyncio
+    async def test_generate_voice_basic(self):
+        provider = AivisProvider()
+        client = AsyncMock()
+        query_resp = _query_resp([])  # viseme は生成しない
+        synth_resp = MagicMock(content=_wav_bytes())
+        client.post = AsyncMock(side_effect=[query_resp, synth_resp])
 
-    in_q, sound_out_q, viseme_out_q = (asyncio.Queue(), asyncio.Queue(), asyncio.Queue())
-    await in_q.put("テスト")
-    task = asyncio.create_task(
-        provider.generate_voice(client, 0, in_q, sound_out_q, viseme_out_q)
-    )
-    data, rate = await asyncio.wait_for(sound_out_q.get(), timeout=2)
-    visemes = await asyncio.wait_for(viseme_out_q.get(), timeout=2)
-    task.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await task
-    assert rate == 24000
-    assert visemes == []
+        in_q, sound_q, viseme_q = (
+            asyncio.Queue(), asyncio.Queue(), asyncio.Queue())
+        await in_q.put("テスト")
+        task = asyncio.create_task(
+            provider.generate_voice(client, 0, in_q, sound_q, viseme_q))
+        data, rate = await asyncio.wait_for(sound_q.get(), timeout=2)
+        visemes = await asyncio.wait_for(viseme_q.get(), timeout=2)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
 
+        assert rate == 24000
+        assert visemes == []
 
-@pytest.mark.asyncio
-async def test_aivis_is_ready_returns_none():
-    """未実装（pass のみ）なので None を返す"""
-    provider = AivisProvider()
-    assert await provider.is_ready(AsyncMock()) is None
+    @pytest.mark.asyncio
+    async def test_is_ready_returns_none(self):
+        provider = AivisProvider()
+        assert await provider.is_ready(AsyncMock()) is None
 
 
 # ---------- COEIROINKProvider ----------
-def test_coeiroink_is_ready_returns_none():
-    import asyncio as _a
-    provider = COEIROINKProvider()
-    assert _a.get_event_loop().run_until_complete(
-        provider.is_ready(AsyncMock())
-    ) is None
+class TestCoeiroink:
+    def test_is_ready_returns_none(self):
+        # get_event_loop() は非推奨なので asyncio.run で実行
+        provider = COEIROINKProvider()
+        result = asyncio.run(provider.is_ready(AsyncMock()))
+        assert result is None
 
-
-@pytest.mark.asyncio
-async def test_coeiroink_generate_voice_raises():
-    provider = COEIROINKProvider()
-    with pytest.raises(NotImplementedError):
-        await provider.generate_voice(
-            AsyncMock(), 0,
-            asyncio.Queue(), asyncio.Queue(), asyncio.Queue()
-        )
+    @pytest.mark.asyncio
+    async def test_generate_voice_raises(self):
+        provider = COEIROINKProvider()
+        with pytest.raises(NotImplementedError):
+            await provider.generate_voice(
+                AsyncMock(), 0,
+                asyncio.Queue(), asyncio.Queue(), asyncio.Queue())
