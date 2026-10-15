@@ -58,7 +58,7 @@ class socialstream_input(Input_format):
                     content=data.get('chatmessage', '')
                     user_name=data['chatname']
                     for q in out_q:
-                        await q.put(Message(user_name=user_name,content=content,location=self.location,stream_id=self.stream_id)) 
+                        await q.put(Message(user_name=user_name,content=content,location=self.location,stream_id=self.stream_id,type="text")) 
 
     async def is_ready(self):
         uri = f"wss://io.socialstream.ninja/join/{self.session_key}/4" 
@@ -103,6 +103,7 @@ class Stream_input(Input_format):
         def recive(payload):
             """
             コメントを受け取った時の処理
+            typeに関して情報を受け取れるようにする
             """
             try:
                 contents = jwt.decode(payload['key'], self.jwt_key, algorithms=["RS256"])

@@ -6,30 +6,30 @@ platforms = ["osx-arm64", "win-64","linux-64"]
 
 [dependencies]
 python = "3.13.*"
-numpy = "*"
-msgpack-python = "*" 
 onnx = "*" #一応、動かなかったらこれ指定">=1.21.0,<2"
 onnxscript = "*" #一応、動かなかったらこれ指定">=0.7.0,<0.8"
-tokenizers = "*"
-hdbscan="*"
-certifi="*"
-PyJWT="*"
-litellm="*"
 #zig="*" #Mac以外でおそらく必要
 #pip="*" #Mac以外でおそらく必要
 
-
 [pypi-dependencies]
+litellm="*"
+tokenizers = "*"
+hdbscan="*"
+certifi="*"
+numpy = "*"
+msgpack-python = "*" 
+setuptools = ">=83.0.0"
+PyJWT=">=2.15.0"
 httpx = "*"
 h2=">=4.4.1"
 anyio=">=4.14.2"
 websockets = "*"
-ollama = "*"
 sounddevice="*"
 soundfile = "*"
 onnxruntime = "*"
 dotenv="*"
 ulid-py="*"
+multidict=">=6.9.1"
 supabase=">2.0.0"
 
 
@@ -52,16 +52,11 @@ nuitka = "*" # Nuitka自体はPyPI版が最も追従が早い
 [feature.license-pip.pypi-dependencies]
 #ライセンス表示のためにpypiに全てのライブラリを集める。ほぼ[dependencies]と同じになる。
 pip-licenses = "*"
-numpy = "*"
-msgpack-python = "*" 
 onnx = "*" #一応、動かなかったらこれ指定">=1.21.0,<2"
 onnxscript = "*" #一応、動かなかったらこれ指定">=0.7.0,<0.8"
-tokenizers = "*"
-hdbscan="*"
-certifi="*"
-PyJWT="*"
 #zig="*" #Mac以外でおそらく必要
 #pip="*" #Mac以外でおそらく必要
+
 
 
 

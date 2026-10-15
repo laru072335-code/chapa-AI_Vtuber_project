@@ -28,7 +28,7 @@ class Save_anythings():
     """
     会話を自動で適切な保存領域に保存するためのもの
     """
-    def __init__(self,db_url,web_url):
+    def __init__(self,db_url:str,web_url:str):
         global public_database_instant
         self.private_database=private_database("memory.db")
         if public_database_instant:
@@ -42,13 +42,13 @@ class Save_anythings():
         publicかprivateかどっちのデータベースに送ればいいのか判定する。
         適したデータベースに保存する。
         """
-        if data.location.startswith("public"):
-            if data.user_name=="assistant":
+        if data.is_public:
+            if data.is_assistant:
                 self.public_database.conversation_save(data.stream_id,data.content,vector,data.location,True)
             else:
                 self.public_database.conversation_save(data.stream_id,data.content,vector,data.location,False)
-        elif data.location.startswith("private"):
-            if data.user_name=="assistant":
+        elif data.is_private:
+            if data.is_assistant:
                 self.private_database.conversation_save(data.content,vector,True)
             else:
                 self.private_database.conversation_save(data.content,vector,False)
@@ -59,13 +59,13 @@ class Get_content():
     """
     短期記憶を確保するためのもの
     """
-    def __init__(self,db_url):
+    def __init__(self,db_url:str,web_url:str):
         global public_database_instant
         self.private_database=private_database("memory.db")
         if public_database_instant:
             self.public_database=public_database_instant
         else:
-            self.public_database=public_database(db_url)
+            self.public_database=public_database(db_url,web_url)
             public_database_instant=self.public_database
 
     def get_content(self,location:str):
@@ -89,10 +89,12 @@ class Clustering:
         return_list=[]
         if llm==None:
             raise ValueError("このメソッドを使用する場合はllmの値を入力してください")
+        # Comment.vectorはlist[float]（user_get_commentで正規化済み）
+        if not all(isinstance(i.vector,(list,tuple,np.ndarray)) for i in data):
+            raise TypeError("Comment.vectorはlist[float]である必要があります")
         recive_vector=[i.vector for i in data]#ベクトルデータだけをとりだす。
         recive_text=[i.text for i in data]#テキストデータだけ取り出す
-        vectors= [json.loads(i) for i in recive_vector]#ベクトルデータをnumpy型に変換(str->float->numpy)
-        vectors=np.array(vectors,dtype=np.float32)
+        vectors=np.array(recive_vector,dtype=np.float32)
         
         if vectors.shape[0] <5:
             raise ValueError("エラー：元となるコメント数が少ないです。")
@@ -110,20 +112,20 @@ class Clustering:
             centroid = np.mean(cluster_vecs, axis=0)
             centroid = centroid / np.linalg.norm(centroid)
             summary=llm.create_summary(cluster_items)
-            return_list.append(clustering_result(summary,centroid))
+            return_list.append(clustering_result(summary,centroid.tolist()))
         return return_list
 
     def stream_clustering(self,llm:"new_LLM.LLMProvider",stream_id:int,stream_name:str):
         """
         配信データのクラスタリング
         """
-        database=stream_database()
-        data=database.user_get_comment()
+        database=stream_database(stream_id)
+        data=database.user_get_comment(stream_id)
         stream_summary=llm.create_summary([i.text for i in data])
         clustering_result=self._clustering(llm,data)
         database.memory_update(stream_id,stream_name,stream_summary,clustering_result)
 
-    def user_clustering(self,llm:"new_LLM.LLMProvider",db_url:str):
+    def user_clustering(self,llm:"new_LLM.LLMProvider",db_url:str,web_url:str):
         """
         ユーザーデータのクラスタリング
         """
@@ -131,15 +133,14 @@ class Clustering:
         if public_database_instant:
             database1=public_database_instant
         else:
-            database1=public_database(db_url)
+            database1=public_database(db_url,web_url)
             public_database_instant=database1
-        database1=public_database(db_url)
         data=database1.user_get_comment("summary")
         clustering_result=self._clustering(llm,data)
         user_summary=llm.create_summary([i.text for i in data])
         database1.memory_update(user_summary,clustering_result)
 
-        database2=private_database()
+        database2=private_database("memory.db")
         data2=database2.user_get_comment("summary")
         data.extend(data2)
         user_summary=llm.create_summary([i.text for i in data])

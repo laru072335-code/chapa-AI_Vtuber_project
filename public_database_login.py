@@ -69,7 +69,9 @@ def login(url:str):
         
         # 認証画面にキャンセル時のリンクや処理を組み込めるようにする
         redirect_uri = f"http://localhost:{port}/callback"
-        login_url = f"{url}/login?redirect_uri={urllib.parse.quote(redirect_uri)}"
+        # クエリ値なので "/" や ":" も含めて完全にエンコードする
+        login_url = (f"{url}/login?redirect_uri="
+                     f"{urllib.parse.quote(redirect_uri, safe='')}")
 
         print(f"ブラウザを開いて認証を行います（制限時間: 1分）: {login_url}")
         webbrowser.open(login_url)

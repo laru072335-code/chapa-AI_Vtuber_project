@@ -18,7 +18,7 @@ class Analyze:
     tableは開くテーブルの名前
     db_urlは外部のデーターベースに保存するときのAPIのurl
     """
-    def __init__(self,db_url,web_url):
+    def __init__(self,db_url:str,web_url:str):
         self.interest_session = self.create_onnx_session("ModernBERT-basemodel.onnx")
         self.au_session = ort.InferenceSession("emotionToAu_v2.onnx")#このモデルはmpsに載せようとするとエラーが出る、多分opsetのバージョンが18のせい
         self.tokenizer = Tokenizer.from_file("ModernBERT-base_tokenizer.json")
@@ -56,14 +56,12 @@ class Analyze:
             else:
                 loop.run_in_executor(None,lambda:self._analyze_and_memory(sentence))
 
-    def _analyze_and_memory(self,sentence:Message,au=False,test=False):
+    def _analyze_and_memory(self,sentence:Message,au=False,test=False)->list[float]:
         """
-        ------------
         これでユーザーのプロンプトや、LLMの回答の感情分析などを行えます。
         auでau_vectorの生成をするかどうかを定義
 
         testはpytest用、引数auと一緒にTrueにしないこと
-        ------------
         """
         encoded = self.tokenizer.encode(sentence.content)
         ids = encoded.ids
@@ -81,13 +79,13 @@ class Analyze:
         #ここから下はクラスタリングする時のためのデータ保存(のちにクラスタリングをすることで興味を推定する。)
 
         self.save_class.conversation_save(sentence,interest.tolist())
-
-        au_vector = self.au_session.run(["AU_vector"], {"emotion_vector": emotion_probs})
-        au_list=au_vector[0].flatten().tolist()
-        au_list=[self.au_scaling(v) for v in au_list]
-        print(f"auベクトル:{au_list}")
         if au:
+            au_vector = self.au_session.run(["AU_vector"], {"emotion_vector": emotion_probs})
+            au_list=au_vector[0].flatten().tolist()
+            au_list=[self.au_scaling(v) for v in au_list]
+            print(f"auベクトル:{au_list}")
             return au_list
+        
         if test:
             return au_list,interest,emotion_probs
         
@@ -103,10 +101,10 @@ class Analyze:
 
 #単体テスト用
 if __name__=="__main__":
-        analyze=Analyze("https://chapa-api-three.vercel.app")
-        analyze._analyze_and_memory(Message("aaa","おはよう","text","public"),test= True)
-        analyze._analyze_and_memory(Message("aaa","元気？","text","public"),test= True)
-        analyze._analyze_and_memory(Message("aaa","それはよかった","text","public"),test= True)
-        analyze._analyze_and_memory(Message("aaa","やった","text","public"),test= True)
-        analyze._analyze_and_memory(Message("aaa","おお","text","public"),test= True)
+        analyze=Analyze("https://chapa-api-three.vercel.app","https://commentsite.vercel.app")
+        analyze._analyze_and_memory(Message("aaa","おはよう","text","private"),test= True)
+        analyze._analyze_and_memory(Message("assistant","元気？","text","private"),test= True)
+        analyze._analyze_and_memory(Message("aaa","うん！","text","private"),test= True)
+        analyze._analyze_and_memory(Message("assistant","やった！","text","private"),test= True)
+        analyze._analyze_and_memory(Message("aaa","？？？ｗ","text","private"),test= True)
         

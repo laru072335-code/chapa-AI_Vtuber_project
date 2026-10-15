@@ -64,14 +64,12 @@ class Shutdown:
         """macでの終了について自動化したもの"""
         subprocess.run(['osascript', '-e', 'quit app "VOICEVOX"'])
         subprocess.run(['osascript', '-e', 'quit app "virtual_roid 0.2.app"'])
-        subprocess.run(["killall","ollama"])
         subprocess.run(['osascript', '-e', 'quit app "socialstream"'])
 
     def Window_shutdown(self):
         """windowsでの終了について自動化したもの"""
         subprocess.run(["taskkill", "/F", "/IM", "VOICEVOX.exe"], stderr=subprocess.DEVNULL)
         subprocess.run(["taskkill", "/F", "/IM", "virtual Roid_0.2.exe"], stderr=subprocess.DEVNULL)
-        subprocess.run(["taskkill", "/F", "/IM", "ollama.exe"], stderr=subprocess.DEVNULL)
         subprocess.run(["taskkill", "/F", "/IM", "socialstream.exe"], stderr=subprocess.DEVNULL)
 
 async def main():
@@ -84,7 +82,7 @@ async def main():
     stream_name=None
     Client=AsyncClient()#非同期でhttpリクエストをなげるためのもの
     analyze=Analyze(setting_data.DB_API,setting_data.WEB_URL)
-    llm=LLMProvider(setting_data.ai_model,setting_data.setting_ai_text,setting_data.DB_API)
+    llm=LLMProvider(setting_data.ai_model,setting_data.setting_ai_text,setting_data.DB_API,setting_data.WEB_URL)
     shutdown=Shutdown()
     
     match  setting_data.input_type:
@@ -130,15 +128,13 @@ async def main():
     comments_analyze_queue=asyncio.Queue[Message](maxsize=setting_data.max_queue_size)
     answer_analyze_queue=asyncio.Queue[Message](maxsize=setting_data.max_queue_size)
     viseme_queue=asyncio.Queue[list[list]](maxsize=setting_data.max_queue_size)
-    answer_subtitle_queue=asyncio.Queue[Message](maxsize=setting_data.max_queue_size)
+    answer_subtitle_queue=asyncio.Queue[Message](maxsize=setting_data.max_queue_size)#これstr型のキューの方がいいかも
     au_queue=asyncio.Queue(maxsize=setting_data.max_queue_size)
     answer_voice_queue=asyncio.Queue(maxsize=setting_data.max_queue_size)
     sound_play_queue=asyncio.Queue(maxsize=setting_data.max_queue_size)
 
     #処理の流れ順に記述。
-    worker=[
-        
-            ]
+    worker=[]
     #ここ名前を変えて要改善（余計な処理が入る感じになってしまっている。）テキストのみ、音声まで　全部でわけて考える
     match setting_data.output:
         case"":
@@ -182,18 +178,21 @@ async def main():
     
     except (KeyboardInterrupt,asyncio.CancelledError):    
         print("正常な",end="")
+        clusterer=Clustering()
         if sys.platform.startswith("win"):
             shutdown.Window_shutdown()
         elif sys.platform.startswith("darwin"):
             shutdown.Mac_shutdown()
         else:
             raise NotImplementedError(f"このアプリは{sys.platform}環境ではサポートされていないはずです。")
-        #この下はv0.3で使う
+        for t in worker:
+            if not t.done():
+                t.cancel()
         print("記憶整理開始")
         if stream_id:
-            Clustering.stream_clustering(llm,stream_id,stream_name)
+            clusterer.stream_clustering(llm,stream_id,stream_name)
         else:
-            Clustering.user_clustering(llm,setting_data.DB_API)
+            clusterer.user_clustering(llm,setting_data.DB_API,setting_data.WEB_URL)
 
     except httpx.ReadTimeout:
         print("接続がタイムアウトしました。パソコンのスペックが足りていないか、リクエストの数が多すぎます。")
@@ -208,6 +207,9 @@ async def main():
         print(f"異常なエラー({e})",end="")
         traceback.print_exc() 
     finally:
+        for t in worker:
+            if not t.done():
+                t.cancel()
         print("シャットダウン")    
 
 #エントリーポイント
