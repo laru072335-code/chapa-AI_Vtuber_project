@@ -33,6 +33,7 @@ multidict=">=6.9.1"
 supabase=">2.0.0"
 
 
+
 [feature.test.pypi-dependencies]
 torch = "*"
 ruff= "*"
@@ -40,11 +41,18 @@ pip-audit="*"
 pytest="*"
 pytest-asyncio="*"
 memray="*"
+#下3つがgoogle/embeddinggemma-2に必要 onnx化はライブラリが対応するまで待機
+sentence_transformers=">=6.1.0"
+transformers = "*"
+Pillow="*"
+torchvision="*"
+huggingface_hub="*"
+
 
 [feature.test.dependencies]
 pyinstrument = "*"
 pandas="*"
-transformers = ">=5.3.0"
+
 
 [feature.build.pypi-dependencies]
 nuitka = "*" # Nuitka自体はPyPI版が最も追従が早い

@@ -9,6 +9,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from torch.optim import AdamW  # ← PyTorch本体から読み込む
+from sentence_transformers import SentenceTransformer
 import pandas as pd
 import os
 DEVICE="cuda:0"
@@ -35,22 +36,6 @@ model = model.float()
 if os.path.exists("/kaggle/working/model.pth"):
     model.load_state_dict(torch.load("/kaggle/working/model.pth", map_location=DEVICE, weights_only=True))
 
-"""
-# ===== 乱数でダミーデータを作成 =====
-dummy_texts = [
-    "今日はとても楽しかった",
-    "悲しい気分だ",
-    "嬉しいな",
-    "怖い夢を見た",
-    "驚いた",
-    "最悪な一日だった",
-    "幸せだ",
-    "不安な気持ちがある",
-] * 10  # 8文 × 10 = 80件
-
-# ラベルは0か1のランダム（8感情分）
-dummy_labels = (torch.rand(80, 8) > 0.5).float()
-"""
 # ===== Dataset =====
 class DummyDataset(Dataset):
     def __init__(self, texts, labels):

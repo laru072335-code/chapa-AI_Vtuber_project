@@ -2,7 +2,7 @@
     //.jsoncにすることでコメントがjsonのファイルの中にかける
     "Speaker": 46, //voicevoxのspeakerのID
     "SettingAItext": "あなたは、絵文字を使わずできるだけ短く返答してください。ただし、温かみを忘れないでください。\n", //システムプロンプト
-    "AI_model": "ollama/gemma4:e2b-mlx", //使用するLLM   <エンジン名>/<モデル名>で指定
+    "AI_model": "ollama_chat/gemma4:e2b-mlx", //使用するLLM   <エンジン名>/<モデル名>で指定。エンジン名に関してはこのサイトの自分が使うエンジンの説明をよく参考にして、指定すること。https://docs.litellm.ai/docs/providers
     "Max_queue_size": 20, //非同期に使用しているキューの最大容量
     "Output": "Unity", //outputの設定  音声とテキストを出力する場合、Sound、テキストのみの場合、Text、Unity(GUI)の場合、Unityに設定
     "Socialstream_path": "", //Mac以外の場合で必要なsocialstreamのパス名

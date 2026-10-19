@@ -106,8 +106,8 @@ def emotion_ai_model_changer(model_name,file_name):
     except Exception as e:
         print(f"❌ 自動修正中にエラーが発生しました: {e}")
     print(f"感情モデルのONNX出力完了: {file_name}.onnx")
-
+    
 if __name__=="__main__":
-    #au_model_changer("emotionToAu_v2")
-    emotion_ai_model_changer('answerdotai/ModernBERT-base',"ModernBERT-basemodel")
+    au_model_changer("emotionToAu_v2")
+    #emotion_ai_model_changer('answerdotai/ModernBERT-base',"ModernBERT-basemodel")
 
