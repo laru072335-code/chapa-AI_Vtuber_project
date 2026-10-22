@@ -5,7 +5,7 @@ import json
 import re
 from dataclasses import dataclass
 from enum import StrEnum
-from pydantic import BaseModel
+from pydantic import BaseModel,field_validator
 from typing import Literal
 class media_type(StrEnum):
     """
@@ -16,9 +16,14 @@ class media_type(StrEnum):
     video="video"
     sound="sound"
     file="file"
-from typing import Literal
-from pydantic import BaseModel, field_validator
-
+class role_type(StrEnum):
+    """
+    想定される入力の形式についてまとめたもの
+    """
+    none="none"
+    user="user"
+    assistant="assistant"
+    system="system"#このロールは現在使われていないのでついでに追加しているだけ
 
 class Message(BaseModel):
     """
@@ -107,6 +112,7 @@ class Comment:
     """
     database_accessでコメント（ユーザー)
     """
+    role:role_type #ない場合は明示的にNoneにする。
     text:str
     vector:list[float]
 
