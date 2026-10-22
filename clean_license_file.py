@@ -5,7 +5,7 @@ pixi licenseにて実行される
 import os
 
 def main():
-    target_file = "LICENSE.txt"
+    target_file = "data/LICENSE.txt"
     if not os.path.exists(target_file):
         print(f"Error: {target_file} not found.")
         return

@@ -11,6 +11,9 @@ import datetime
 import os
 import requests 
 from public_database_login import login
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from httpx import AsyncClient 
 class DatabaseError(Exception):
     pass
 
@@ -91,8 +94,16 @@ class stream_database(database):
         """
         配信に対するデータ処理をするときは、stream_idで取得する方法のみに対応(場合分けする必要がないため)
         """
-        response=self.supabase.table('interest_records').select("text,vector").eq('stream_id',stream_id).execute()
-        return [Comment(data["text"],vector_to_float_list(data["vector"])) for data in response.data]
+        return_list=[]
+        response=self.supabase.table('interest_records').select("user_id,text,vector").eq('stream_id',stream_id).execute()
+        data=response.data
+        for element in data:
+            if element["user_id"]==0:
+                return_list.append(Comment(role_type.assistant,data["text"],vector_to_float_list(data["vector"])))
+            else:
+                return_list.append(Comment(role_type.user,data["text"],vector_to_float_list(data["vector"])))
+
+        return return_list
 
     def memory_update(self,stream_id:int,stream_name:str,stream_summary:str,topic_data:list[clustering_result]):
         data={
@@ -144,7 +155,7 @@ class private_database(database):
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
         """)
         self.conn.commit()
-        with open("userprofile.json","w",encoding="UTF-8")as f:
+        with open("data/userprofile.json","w",encoding="UTF-8")as f:
             data={
                 "user_name":user_name,
                 "last_updated":datetime.datetime.now().isoformat(),
@@ -160,7 +171,7 @@ class private_database(database):
         self.conn.commit()
     
     def memory_update(self,user_summary:str,topic_data:list[clustering_result]):
-        with open("userprofile.json","r+",encoding="UTF-8")as f:
+        with open("data/userprofile.json","r+",encoding="UTF-8")as f:
             data=json.load(f)
             data["profile_summary"]=user_summary
             data["last_updated"]=datetime.datetime.now().isoformat()
@@ -188,13 +199,20 @@ class private_database(database):
             rows =self.cur.fetchall()
             self.cur.execute("UPDATE interest_records SET is_clustered = true WHERE is_clustered = false")
             # BLOB(float32)をlist[float]に戻して返す
-            return [Comment(row[0],vector_to_float_list(row[1]))for row in rows]
+            return [Comment(role_type.none,row[0],vector_to_float_list(row[1]))for row in rows]
         elif mode=="log":
+            return_list=[]
             self.cur.execute(
-                "SELECT text, vector FROM interest_records "
+                "SELECT text, vector,is_assistant FROM interest_records "
                 "ORDER BY timestamp DESC, record_id DESC LIMIT 30")
             rows =self.cur.fetchall()
-            return [Comment(row[0],vector_to_float_list(row[1]))for row in rows]
+            for row in rows:
+                if row[2]:
+                    return_list.append(Comment(role_type.assistant,row[0],vector_to_float_list(row[1])))
+                else:
+                    return_list.append(Comment(role_type.user,row[0],vector_to_float_list(row[1])))
+
+            return return_list
         else:
             raise ValueError("modeに変な値が入っています。")
 
@@ -202,49 +220,47 @@ class private_database(database):
 class public_database(database):
     """
     パブリックな会話履歴などを保存するためのもの
+    トークン切れのエラーハンドリング欲しい
     """
-    def __init__(self,db_url:str,web_url:str):
+    def __init__(self,db_url:str,token:str,Client:"AsyncClient"):
         self.db_url=db_url
-        self.token=login(web_url)
         self.reply_id=None
+        self.Client=Client
+        self.token=token
         if not self.token:
             raise ValueError("tokenを取得できませんでした。")
 
-    def conversation_save(self,stream_id:int,text:str,vector:list[float],location:str,is_assistant:bool):
-        if is_assistant and stream_id==None:
-            if self.reply_id:
-                responce=requests.post(
-                                        url=f"{self.db_url}/conversation_save",
-                                        headers={
-                                                "Authorization": f"Bearer {self.token}"
-                                                }
-                                        ,
-                                        json={
-                                            "stream_id": stream_id,
-                                            "text": text,
-                                            "vector":vector ,
-                                            "location": location,
-                                            "reply_id":self.reply_id
-                                            })
-                self.reply_id=None
-            else:
-                raise ValueError("AIの会話記録をDBに保存するとき、reply_idが必要です")
+    def conversation_save(self,stream_id:int,text:str,vector:list[float],location:str,reply_id:int):
+        #配信時はstream_idとreply_id両方があることからAIと判別する。
+        if self.reply_id:
+            responce=requests.post(
+                url=f"{self.db_url}/conversation_save",
+                headers={
+                         "Authorization": f"Bearer {self.token}"
+                        },
+                json={
+                        "stream_id": stream_id,
+                        "text": text,
+                        "vector":vector ,
+                        "location": location,
+                        "reply_id":reply_id
+                        })
+            return None
         else:
             responce=requests.post(
-                        url=f"{self.db_url}/conversation_save",
-                        headers={
-                                "Authorization": f"Bearer {self.token}"
-                                }
-                        ,
-                        json={
-                            "stream_id": stream_id,
-                            "text": text,
-                            "vector":vector ,
-                            "location": location,
-                            "reply_id":None
-                            })
-            if not stream_id:
-                self.reply_id=int(responce.json())
+                url=f"{self.db_url}/conversation_save",
+                headers={
+                        "Authorization": f"Bearer {self.token}"
+                        }
+                ,
+                json={
+                    "stream_id": stream_id,
+                    "text": text,
+                    "vector":vector ,
+                    "location": location,
+                    "reply_id":None
+                    })
+            return int(responce.json())
     
     def memory_update(self,user_summary:str,topic_data:list[clustering_result]):
         payload=[{"topic":t.topic,"vector":t.vector} for t in topic_data]
@@ -265,14 +281,28 @@ class public_database(database):
         pass
 
     def user_get_comment(self,mode:str)->list[Comment]:
-        if mode=="summary" or mode=="log":
+        if mode=="summary":
             responce=requests.get(
                             url=f"{self.db_url}/user_comments/{mode}",
                             headers={
                                     "Authorization": f"Bearer {self.token}"
                                     })
             return_json=responce.json()
-            return [Comment(data["text"],vector_to_float_list(data["vector"])) for data in return_json]
+            return [Comment(role_type.none,data["text"],vector_to_float_list(data["vector"])) for data in return_json]
+        elif mode=="log":
+            responce=requests.get(
+                                        url=f"{self.db_url}/user_comments/{mode}",
+                                        headers={
+                                                "Authorization": f"Bearer {self.token}"
+                                                })
+            return_json=responce.json()
+            return_list=[]
+            for data in return_json:
+                if data["is_assistant"]:
+                    return_list.append(Comment(role_type.assistant,data["text"],vector_to_float_list(data["vector"])))
+                else:
+                    return_list.append(Comment(role_type.user,data["text"],vector_to_float_list(data["vector"])))
+            return return_list
 
         else:
             raise ValueError("modeに変な値が入っています。")

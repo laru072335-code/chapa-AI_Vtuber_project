@@ -41,7 +41,7 @@ class Booting:
         """
         設定の読み込みを行うもの
         """
-        setting=Settings.from_json("setting.jsonc")
+        setting=Settings.from_json("data/setting.jsonc")
         #ここで各種設定を返すようにする。
         return setting
     

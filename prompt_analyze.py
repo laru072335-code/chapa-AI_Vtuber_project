@@ -11,6 +11,9 @@ import onnxruntime as ort
 import asyncio
 from database_utilities import Save_anythings
 from type_list import *
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from httpx import AsyncClient 
 
 class Analyze:
     """
@@ -18,11 +21,11 @@ class Analyze:
     tableは開くテーブルの名前
     db_urlは外部のデーターベースに保存するときのAPIのurl
     """
-    def __init__(self,db_url:str,web_url:str):
-        self.interest_session = self.create_onnx_session("ModernBERT-basemodel.onnx")
-        self.au_session = ort.InferenceSession("emotionToAu_v2.onnx")#このモデルはmpsに載せようとするとエラーが出る、多分opsetのバージョンが18のせい
-        self.tokenizer = Tokenizer.from_file("ModernBERT-base_tokenizer.json")
-        self.save_class=Save_anythings(db_url,web_url)
+    def __init__(self,db_url:str,web_url:str,Client:"AsyncClient"):
+        self.interest_session = self.create_onnx_session("data/embedding_model.onnx")
+        self.au_session = ort.InferenceSession("data/emotionToAu_v2.onnx")#このモデルはmpsに載せようとするとエラーが出る、多分opsetのバージョンが18のせい
+        self.tokenizer = Tokenizer.from_file("data/embeddinggemma-2.json")
+        self.save_class=Save_anythings(db_url,web_url,Client)
 
     def create_onnx_session(self,model_path:str) ->ort.InferenceSession:
         """
@@ -78,7 +81,7 @@ class Analyze:
         print(f"感情ベクトル:{emotion_probs}")
         #ここから下はクラスタリングする時のためのデータ保存(のちにクラスタリングをすることで興味を推定する。)
 
-        self.save_class.conversation_save(sentence,interest.tolist())
+        asyncio.create_task(self.save_class.conversation_save(sentence, interest.tolist()))
         if au:
             au_vector = self.au_session.run(["AU_vector"], {"emotion_vector": emotion_probs})
             au_list=au_vector[0].flatten().tolist()
