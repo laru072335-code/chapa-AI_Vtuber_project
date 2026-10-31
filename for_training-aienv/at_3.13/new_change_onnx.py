@@ -3,6 +3,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoModel
+import onnx
 DEVICE = "cpu"  # ONNX変換はCPU上で行うのが安全で確実です
 
 # ===== 1. ONNX化用に調整したモデルクラスの定義 =====
@@ -75,6 +76,25 @@ torch.onnx.export(
         "embeddings": {0: "batch_size"},
         "logits": {0: "batch_size"}
     },
+    dynamo=False
 )
 
 print(f"ONNXモデルの出力完了: {onnx_path}")
+# 出力されたばかりのONNXファイルを読み込む
+onnx_model = onnx.load(f"{onnx_path}")
+fixed_count = 0
+
+# 全てのノードを走査し、Split演算子のバグ原因「num_outputs」を削除
+for node in onnx_model.graph.node:
+    if node.op_type == "Split":
+        for attr in list(node.attribute):
+            if attr.name == "num_outputs":
+                node.attribute.remove(attr)
+                fixed_count += 1
+
+if fixed_count > 0:
+    # 上書き保存
+    onnx.save(onnx_model, f"{onnx_path}.onnx")
+    print(f"🔧 修正成功: {fixed_count}個の不整合ノードを自動クリーンアップしました。")
+    print(f"🚀 これで '{f"{onnx_path}.onnx"}' はそのまま推論（InferenceSession）で使用可能です！")
+

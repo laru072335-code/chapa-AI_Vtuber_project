@@ -6,33 +6,28 @@ platforms = ["osx-arm64", "win-64","linux-64"]
 
 [dependencies]
 python = "3.13.*"
+python-dateutil = "<3.0.0"
 onnx = "*" #一応、動かなかったらこれ指定">=1.21.0,<2"
 onnxscript = "*" #一応、動かなかったらこれ指定">=0.7.0,<0.8"
 #zig="*" #Mac以外でおそらく必要
 #pip="*" #Mac以外でおそらく必要
 
 [pypi-dependencies]
-litellm="*"
+numpy="*"
+litellm=">= 1.100.4"
 tokenizers = "*"
 hdbscan="*"
 certifi="*"
-numpy = "*"
 msgpack-python = "*" 
-setuptools = ">=83.0.0"
-PyJWT=">=2.15.0"
 httpx = "*"
-h2=">=4.4.1"
-anyio=">=4.14.2"
+filelock=">=4.2.1"
 websockets = "*"
-sounddevice="*"
 soundfile = "*"
 onnxruntime = "*"
 dotenv="*"
-ulid-py="*"
-multidict=">=6.9.1"
+setuptools=">=84.1.0"
 supabase=">2.0.0"
-
-
+keyring="*"
 
 [feature.test.pypi-dependencies]
 torch = "*"
@@ -41,7 +36,6 @@ pip-audit="*"
 pytest="*"
 pytest-asyncio="*"
 memray="*"
-#下3つがgoogle/embeddinggemma-2に必要 onnx化はライブラリが対応するまで待機
 sentence_transformers=">=6.1.0"
 transformers = "*"
 Pillow="*"
@@ -75,9 +69,9 @@ license=["build","license-pip"]
 
 [tasks]
 
-build-app = { cmd = "python -m nuitka --standalone --plugin-enable=numpy --nofollow-import-to=pygments --jobs=-1 --include-package=websockets chapa_core.py", default-environment = "build-env"}
+build-app = { cmd = "python -m nuitka --standalone --plugin-enable=numpy --nofollow-import-to=pygments --jobs=-1 --include-data-dir=data=data --include-package=websockets chapa_core.py", default-environment = "build-env"}
 
-build-app-windows={ cmd = "python -m nuitka --zig --standalone --plugin-enable=numpy --nofollow-import-to=pygments --jobs=-1 --include-package=websockets --include-package=encodings chapa_core.py", default-environment = "build-env"}
+build-app-windows={ cmd = "python -m nuitka --zig --standalone --plugin-enable=numpy --nofollow-import-to=pygments --jobs=-1 --include-data-dir=data=data  --include-package=websockets --include-package=encodings chapa_core.py", default-environment = "build-env"}
 #zigをいれてコンパイル
 
 comment-app={ cmd = "python -m nuitka --standalone --nofollow-import-to=pygments --include-package=websockets comments_test.py", default-environment = "build-env"}
@@ -85,8 +79,7 @@ comment-app={ cmd = "python -m nuitka --standalone --nofollow-import-to=pygments
 testrun="python chapa_core.py"     
 
 instrumentrun="pyinstrument -o profile.html chapa_core.py"
-memrayrun="memray run chapa_core.py"
-pip-audit="pip-audit"     
+memrayrun="memray run chapa_core.py" 
 test={ cmd ="pytest -v -s --tb=long",env = { KMP_DUPLICATE_LIB_OK = "TRUE" }}
 check="ruff check"
 comment="python comments_test.py"
