@@ -8,31 +8,30 @@ import re
 import requests
 from type_list import *
 from database_utilities import Get_content,internet_access
-from Tool import tools
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from httpx import AsyncClient 
+#from Tool import Tools
 
 class LLMProvider():
     """
     LLMにリクエストを投げる基本形
     tool callingするとき、温度が高いと厄介かも
     """
-    def __init__(self,AImodel:str,settingtext:str,db_url:str,web_url:str,Client:AsyncClient):
+    def __init__(self,setting:Settings):
         """
         ここでシステムプロンプトなどの初期設定の処理をする。
         ここでインターネットに繋がっているかの判定するための関数が欲しい
         """
-        self.get_content=Get_content(db_url,web_url,Client)
-        self.AImodel=AImodel
+        self.get_content=Get_content(setting.db_url,setting.web_url)
+        self.AImodel=setting.AImodel
         if internet_access():
-            responce=requests.get(url=f"{db_url}/system_prompt")
+            responce=requests.get(url=f"{setting.db_url}/system_prompt")
         data=responce.json()
         print(data)
+        #tool=Tools(setting)
+        #self.TOOLS, self.AVAILABLE_FUNCTIONS=tool.tools()
         with open("data/conversation.json","r+",encoding="UTF-8")as f:
             data=json.load(f)
-            if not data[0]["content"][0]["text"] == settingtext:
-                data[0]["content"][0]["text"] =settingtext
+            if not data[0]["content"][0]["text"] == setting.settingtext:
+                data[0]["content"][0]["text"] =setting.settingtext
             f.seek(0)
             json.dump(data,f,ensure_ascii=False)
             f.truncate()
@@ -71,6 +70,8 @@ class LLMProvider():
             response=await litellm.acompletion(
                 model=self.AImodel,
                 messages=comment_list,
+                tool_choice="auto",
+                tools=self.TOOLS,
                 #stream=True
             )
             works=[]
