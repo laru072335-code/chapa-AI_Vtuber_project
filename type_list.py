@@ -88,7 +88,7 @@ class Settings:
             content = re.sub(r'(?<!:)\/\/.*', '', f.read())
             data = json.loads(content)
         # type_list.py での読み込みイメージ
-        key_path = data.get("public_key_path", "public_key.pem")
+        key_path = data.get("public_key_path", "data/public_key.pem")
         public_key_str=""
         with open(key_path, "r", encoding="utf-8") as key_file:
             public_key_str = key_file.read()
@@ -115,6 +115,7 @@ class Comment:
     role:role_type #ない場合は明示的にNoneにする。
     text:str
     vector:list[float]
+    timestamp:str
 
 @dataclass
 class clustering_result:
@@ -123,3 +124,11 @@ class clustering_result:
     """
     topic:str
     vector:list[float]
+
+@dataclass
+class Profile:
+    """
+    ユーザーのプロフィール取得用
+    """
+    user_summary:str
+    last_updated:str

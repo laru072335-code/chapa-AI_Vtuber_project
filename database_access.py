@@ -11,9 +11,8 @@ import datetime
 import os
 import requests 
 from public_database_login import login
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from httpx import AsyncClient 
+import keyring
+
 class DatabaseError(Exception):
     pass
 
@@ -72,6 +71,12 @@ class database(ABC):
         """
         pass
 
+    def get_profile(self)->Profile:
+        """
+        ユーザーのプロフィールを返す関数
+        """
+
+
 
 class stream_database(database):
     """
@@ -124,6 +129,12 @@ class stream_database(database):
 
     def search(self,**con):
         pass
+
+    def get_profile(self):
+        """
+        stremモードにおいては、前の配信の要約を取り出す。
+        """
+        self.supabase
         
 class private_database(database):
     """
@@ -203,7 +214,7 @@ class private_database(database):
         elif mode=="log":
             return_list=[]
             self.cur.execute(
-                "SELECT text, vector,is_assistant FROM interest_records "
+                "SELECT text, vector,is_assistant,timestamp FROM interest_records "
                 "ORDER BY timestamp DESC, record_id DESC LIMIT 30")
             rows =self.cur.fetchall()
             for row in rows:
@@ -216,29 +227,51 @@ class private_database(database):
         else:
             raise ValueError("modeに変な値が入っています。")
 
+    def get_profile(self)->Profile:
+        with open("data/userprofile.json","r",encoding="UTF-8")as f:
+            data=json.loads(f)
+            return Profile(data["profile_summary"],data["last_updated"])
 
 class public_database(database):
     """
     パブリックな会話履歴などを保存するためのもの
-    トークン切れのエラーハンドリング欲しい
     """
-    def __init__(self,db_url:str,token:str,Client:"AsyncClient"):
+    def __init__(self,db_url:str,web_url:str):
         self.db_url=db_url
+        self.web_url=web_url
         self.reply_id=None
-        self.Client=Client
-        self.token=token
+        self.token=get_token(db_url,web_url)
         if not self.token:
             raise ValueError("tokenを取得できませんでした。")
+        
+        self.session = requests.Session()
+        self.session.headers.update({"Authorization": f"Bearer {self.token}"})
+
+    def _post_request_preset(self,method:str,json):
+        response=self.session.post(url=f"{self.db_url}/{method}",json=json)
+        if response.status_code == 401:
+            print("トークンが切れました。再取得を試みます...")
+            self.token = get_token(self.db_url,self.web_url)
+            self.session.headers.update({"Authorization": f"Bearer {self.token}"})
+            response=self.session.post(url=f"{self.db_url}{method}",json=json)
+        return response
+    
+    def _get_request_preset(self,method:str):
+        response=self.session.get(url=f"{self.db_url}/{method}")
+        if response.status_code == 401:
+            print("トークンが切れました。再取得を試みます...")
+            self.token = get_token(self.db_url,self.web_url)
+            self.session.headers.update({"Authorization": f"Bearer {self.token}"})
+            response=self.session.get(url=f"{self.db_url}{method}")
+        return response
+
 
     def conversation_save(self,stream_id:int,text:str,vector:list[float],location:str,reply_id:int):
         #配信時はstream_idとreply_id両方があることからAIと判別する。
         if self.reply_id:
-            responce=requests.post(
-                url=f"{self.db_url}/conversation_save",
-                headers={
-                         "Authorization": f"Bearer {self.token}"
-                        },
-                json={
+            responce=self._post_request_preset(
+                        "conversation_save",
+                        json={
                         "stream_id": stream_id,
                         "text": text,
                         "vector":vector ,
@@ -247,54 +280,32 @@ class public_database(database):
                         })
             return None
         else:
-            responce=requests.post(
-                url=f"{self.db_url}/conversation_save",
-                headers={
-                        "Authorization": f"Bearer {self.token}"
-                        }
-                ,
-                json={
-                    "stream_id": stream_id,
-                    "text": text,
-                    "vector":vector ,
-                    "location": location,
-                    "reply_id":None
-                    })
+            responce=self._post_request_preset(
+                                "conversation_save",
+                                json={
+                                "stream_id": stream_id,
+                                "text": text,
+                                "vector":vector ,
+                                "location": location,
+                                "reply_id":None
+                                })
             return int(responce.json())
     
     def memory_update(self,user_summary:str,topic_data:list[clustering_result]):
         payload=[{"topic":t.topic,"vector":t.vector} for t in topic_data]
-        responce=requests.post(
-                        url=f"{self.db_url}/user_topic_save",
-                        headers={
-                                "Authorization": f"Bearer {self.token}"
-                                }
-                        ,json=payload)
-        responce=requests.post(
-                                url=f"{self.db_url}/user_profile_update",
-                                headers={
-                                        "Authorization": f"Bearer {self.token}"
-                                        }
-                                ,json={"profile_summary":user_summary})
+        self._post_request_preset("user_topic_save",json=payload)
+        self._post_request_preset("user_profile_update",json={"profile_summary":user_summary})
     
     def search(self,**con):
         pass
 
     def user_get_comment(self,mode:str)->list[Comment]:
         if mode=="summary":
-            responce=requests.get(
-                            url=f"{self.db_url}/user_comments/{mode}",
-                            headers={
-                                    "Authorization": f"Bearer {self.token}"
-                                    })
+            responce=self._get_request_preset("user_comments/summary")
             return_json=responce.json()
             return [Comment(role_type.none,data["text"],vector_to_float_list(data["vector"])) for data in return_json]
         elif mode=="log":
-            responce=requests.get(
-                                        url=f"{self.db_url}/user_comments/{mode}",
-                                        headers={
-                                                "Authorization": f"Bearer {self.token}"
-                                                })
+            responce=self._get_request_preset("user_comments/log")
             return_json=responce.json()
             return_list=[]
             for data in return_json:
@@ -306,6 +317,24 @@ class public_database(database):
 
         else:
             raise ValueError("modeに変な値が入っています。")
+
+def get_token(db_url:str,web_url:str,file_name="data/token.json",)->str:
+    """
+    public_database用のトークンを取得する。
+    初回のインスタンス作成時のみ外部で呼ぶ
+    2回目以降はpublicdatabase内でログイン処理を呼ぶ
+    """
+    service_id = "chapa_user"
+    username = "user"
+    token=keyring.get_password(service_id,username)
+    responce = requests.get(headers={"Authorization": f"Bearer {token}"},url=f"{db_url}/check")
+    print(responce.json())
+    if responce.json():
+        return token
+    else:
+        token=login(web_url)
+        keyring.set_password(service_id,username,token)
+        return token
 
 if __name__=="__main__":
     db=public_database("https://chapa-api-three.vercel.app","https://commentsite.vercel.app")

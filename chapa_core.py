@@ -76,13 +76,13 @@ async def main():
     """
     ここで色々な初期設定の反映と、非同期処理の設定
     """
-    booting=Booting()
-    setting_data=await booting.loading() 
     stream_id=None
     stream_name=None
+    booting=Booting()
+    setting_data=await booting.loading()
     Client=AsyncClient()#非同期でhttpリクエストをなげるためのもの
-    analyze=Analyze(setting_data.DB_API,setting_data.WEB_URL,Client)
-    llm=LLMProvider(setting_data.ai_model,setting_data.setting_ai_text,setting_data.DB_API,setting_data.WEB_URL,Client)
+    analyze=Analyze(setting_data.DB_API,setting_data.WEB_URL)
+    llm=LLMProvider(setting_data)
     shutdown=Shutdown()
     
     match  setting_data.input_type:
@@ -192,7 +192,7 @@ async def main():
         if stream_id:
             clusterer.stream_clustering(llm,stream_id,stream_name)
         else:
-            clusterer.user_clustering(llm,setting_data.DB_API,setting_data.WEB_URL,Client)
+            clusterer.user_clustering(llm,setting_data.DB_API,setting_data.WEB_URL)
 
     except httpx.ReadTimeout:
         print("接続がタイムアウトしました。パソコンのスペックが足りていないか、リクエストの数が多すぎます。")

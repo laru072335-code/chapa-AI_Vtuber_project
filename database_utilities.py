@@ -7,34 +7,11 @@ import hdbscan
 import numpy as np
 import socket
 import json
-from asyncio import Queue
-from public_database_login import login
+import asyncio
+from database_access import get_token
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:# Clusteringクラスの型チェックのため
     import new_LLM
-    from httpx import AsyncClient 
-
-def _get_token(web_url,file_name="data/token.json")->str:
-    """
-    public_database用のトークンを取得する。
-    初回の処理のみ
-    2回目以降はpublicdatabase内でログイン処理を呼ぶ
-    """
-    token=None
-    with open(file_name,"r+",encoding="utf-8")as f:
-        data=json.loads(f)
-        token=data["token"]
-        if token:
-            return token
-        else:
-            token=login(web_url)
-            data["token"]=token
-            f.seek(0)
-            json.dump(data,f,ensure_ascii=False)
-            f.truncate()
-            return token
-
-
 
 def internet_access(host: str = "1.1.1.1", port: int = 53, timeout: float = 3.0) -> bool: 
     """
@@ -48,36 +25,41 @@ def internet_access(host: str = "1.1.1.1", port: int = 53, timeout: float = 3.0)
             return True
     except OSError:
         return False
+    
 class Save_anythings():
     """
     会話を自動で適切な保存領域に保存するためのもの
     """
-    def __init__(self,db_url:str,web_url:str,Client:"AsyncClient"):
+    def __init__(self,db_url:str,web_url:str):
         self.private_database=private_database("data/memory.db")
-        self.save_id=Queue[int](maxsize=10) #とりあえず10
-        self.public_database=public_database(db_url,_get_token(web_url),Client)
+        self.save_id=asyncio.Queue[int](maxsize=10) #とりあえず10
+        self.public_database=public_database(db_url,web_url)
 
     async def conversation_save(self,data:Message,vector:list[float]):
         """
         publicかprivateかどっちのデータベースに送ればいいのか判定する。
         適したデータベースに保存する。
         """
+        loop=asyncio.get_running_loop()
         if data.is_public:
             if data.is_assistant:
                 save_id=await self.save_id.get()
                 if save_id:
-                    self.public_database.conversation_save(data.stream_id,data.content,vector,data.location,save_id)
+                    await loop.run_in_executor(None,lambda:self.public_database.conversation_save(data.stream_id,data.content,vector,data.location,save_id))
+                   
                 else:
                     raise ValueError("assistantの回答は必ずuserの回答の後にDBに保存する必要があります")
             else:
-                save_id=self.public_database.conversation_save(data.stream_id,data.content,vector,data.location,False)
-                await self.save_id.put(save_id)
+                temp=await loop.run_in_executor(None,lambda:self.public_database.conversation_save(data.stream_id,data.content,vector,data.location,False))
+                await self.save_id.put(temp)
 
         elif data.is_private:
             if data.is_assistant:
-                self.private_database.conversation_save(data.content,vector,True)
+                await loop.run_in_executor(None,lambda: self.private_database.conversation_save(data.content,vector,True))
+               
             else:
-                self.private_database.conversation_save(data.content,vector,False)
+                await loop.run_in_executor(None,lambda:self.private_database.conversation_save(data.content,vector,False))
+                
         else:
             raise ValueError("locationに不明な値があります。")
 
@@ -85,29 +67,24 @@ class Get_content():
     """
     短期記憶を確保するためのもの
     """
-    def __init__(self,db_url:str,web_url:str,Client:"AsyncClient"):
+    def __init__(self,db_url:str,web_url:str):
         self.private_database=private_database("data/memory.db")
-        self.public_database=public_database(db_url,_get_token(web_url),Client)
+        self.public_database=public_database(db_url,web_url)
 
     def get_content(self,location:str):
         if location.startswith("private"):
-            return self.private_database.user_get_comment("log")
+            self.private_database.user_get_comment("log")
+            self.public_database.user_get_comment("log")
         elif location.startswith("public"):# publicの場合もう少し細かく分ける必要があるかも？
             return self.public_database.user_get_comment("log")
         else:
             raise ValueError("locationに不明な値があります")
 
-class Get_data_for_LLM:
-    def __init__(self,db_url:str,web_url:str,Client:"AsyncClient"):
-        self.private_database=private_database("data/memory.db")
-        self.public_database=public_database(db_url,_get_token(web_url),Client)
-    def search(self):
-
-    def get_profile(self):
-
-    def get_topic(self):
-
-
+    def get_user_profile(self,location:str):
+        """
+        ユーザーのプロフィールを取得する。
+        """
+        
         
 class Clustering:
     """
@@ -159,7 +136,7 @@ class Clustering:
         clustering_result=self._clustering(llm,data)
         database.memory_update(stream_id,stream_name,stream_summary,clustering_result)
 
-    def user_clustering(self,llm:"new_LLM.LLMProvider",db_url:str,web_url:str,Client:"AsyncClient"):
+    def user_clustering(self,llm:"new_LLM.LLMProvider",db_url:str,web_url:str):
         """
         ユーザーデータのクラスタリング
         """
@@ -167,7 +144,7 @@ class Clustering:
         if public_database_instant:
             database1=public_database_instant
         else:
-            database1=public_database(db_url,web_url,Client)
+            database1=public_database(db_url,web_url)
             public_database_instant=database1
         data=database1.user_get_comment("summary")
         clustering_result=self._clustering(llm,data)
