@@ -80,25 +80,28 @@ async def main():
     stream_name=None
     booting=Booting()
     setting_data=await booting.loading()
-    Client=AsyncClient()#非同期でhttpリクエストをなげるためのもの
-    analyze=Analyze(setting_data.DB_API,setting_data.WEB_URL)
-    llm=LLMProvider(setting_data)
-    shutdown=Shutdown()
+    if setting_data.input_type=="socialstream" or setting_data.input_type=="stream":
+        stream_id=int(input("stream_idを入力してください 0は入力しないでください"))
+        stream_name=input("stream_nameを入力してください")
+
+    client_task = asyncio.to_thread(AsyncClient)
+    analyze_task = asyncio.to_thread(Analyze, setting_data.DB_API, setting_data.WEB_URL)
+    llm_task = asyncio.to_thread(LLMProvider, setting_data,stream_id)
+    shutdown_task = asyncio.to_thread(Shutdown)
+    # 4つの処理の完了を同時に待つ
+    Client, analyze, llm, shutdown = await asyncio.gather(
+        client_task, analyze_task, llm_task, shutdown_task
+    )
     
     match  setting_data.input_type:
         case "socialstream":
-            stream_id=int(input("stream_idを入力してください 0は入力しないでください"))
-            stream_name=input("stream_nameを入力してください")
             inputer=Inputs.socialstream_input(stream_id)
         case "discord":
             inputer=Inputs.Discord_input()
         case "desktop":
             inputer=Inputs.Desktop_input()
         case "stream":
-            stream_id=int(input("stream_idを入力してください 0は入力しないでください"))
-            stream_name=input("stream_nameを入力してください")
             inputer=Inputs.Stream_input(stream_id,setting_data.Public_key)
-
         case _:
             raise ValueError("inputは現在その形式に対応していません。")
         

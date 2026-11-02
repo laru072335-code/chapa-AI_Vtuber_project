@@ -23,21 +23,34 @@ AIが使うツールについてまとめたもの
 """
 from datetime import datetime
 from type_list import *
+from database_access import private_database,public_database,stream_database
 class Tools:
-    def __init__(self,setting:Settings):
+    def __init__(self,setting:Settings,stream_id:int=None):
         self.setting=setting
-        self.
+        self.private_database=private_database("data/memory.db")
+        self.public_database=public_database(setting.DB_API,setting.WEB_URL)
+        if stream_id:
+            self.stream_database=stream_database(stream_id)
         
     def now_time(self):
         return datetime.now().astimezone().isoformat()
+    def _before_serch(self):
+        """
+        ベクトル検索する時の下準備用
+        """
+        pass
     def stream_log_search(self,word,vector_search=False):
-
-    def get_stream_topic(self,word=None):
-
-    def get_user_topic(self,word=None):
-        
+        pass
+    
     def user_log_search(self,word,vector_search=False):
         pass
+
+    def get_stream_topic(self,word=None):
+        pass
+
+    def get_user_topic(self,word=None):
+        pass
+   
     def tools(self):
         """
         ### litellmにの引数のtoolsに渡すリストとAVAILABLE_FUNCTIONSを返す。

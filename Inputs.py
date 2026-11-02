@@ -12,11 +12,11 @@ import jwt
 
 class Input_format(ABC):
     @abstractmethod
-    def __init__(self,location:str,stream_id=False):
+    def __init__(self,authority:str,stream_id=False):
         """
         特殊な場合を除き、public かprivateで指定する
         """
-        self.location=location
+        self.authority=authority
         if stream_id:
             self.stream_id=stream_id
         
@@ -58,7 +58,7 @@ class socialstream_input(Input_format):
                     content=data.get('chatmessage', '')
                     user_name=data['chatname']
                     for q in out_q:
-                        await q.put(Message(user_name=user_name,content=content,location=self.location,stream_id=self.stream_id,type="text")) 
+                        await q.put(Message(user_name=user_name,content=content,authority=self.authority,stream_id=self.stream_id,type="text")) 
 
     async def is_ready(self):
         uri = f"wss://io.socialstream.ninja/join/{self.session_key}/4" 
@@ -112,7 +112,7 @@ class Stream_input(Input_format):
                 user_name = contents.get("name")
 
                 for q in out_q:
-                    q.put(Message(user_name=user_name,content=payload["comment"],location="public",stream_id=self.stream_id)) 
+                    q.put(Message(user_name=user_name,content=payload["comment"],authority="stream",stream_id=self.stream_id)) 
 
             except jwt.ExpiredSignatureError:
                 print("エラー: トークンの有効期限（exp）が切れています")

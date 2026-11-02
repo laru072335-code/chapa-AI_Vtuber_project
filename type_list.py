@@ -5,8 +5,8 @@ import json
 import re
 from dataclasses import dataclass
 from enum import StrEnum
-from pydantic import BaseModel,field_validator
-from typing import Literal
+from pydantic import BaseModel,field_validator,model_validator
+from typing import Literal,Optional
 class media_type(StrEnum):
     """
     想定される入力の形式についてまとめたもの
@@ -28,14 +28,27 @@ class role_type(StrEnum):
 class Message(BaseModel):
     """
     inputの形式について定めたもの
-    Location型は、publicかprivateから始まる文字列のみ受け入れる。
     """
     user_name: str  # ユーザーの名前
     content: str  # コンテンツ 将来は画像データとかも入る
     type: Literal["text", "image", "video", "sound", "file"]  # コンテンツのデータがテキストか画像かなどを指定
-    location: str  # そのコメントの権限について "private"か"public"から始める
-    stream_id: int | None  # 配信id
+    authority:Literal["private","public","stream"] #権限設定
+    detail:Optional[int|str]=None #publicの場合はdiscordの鯖名とかのより細かい権限について、streamの場合は配信id、privateの場合は何もなし
 
+    @model_validator(mode='after')
+    def detail_confirm(self) -> 'Message':
+        """authority の値に応じて、必要なフィールドの有無をチェックする"""
+        if self.authority == "stream":
+            if not isinstance(self.detail,int):
+                raise ValueError("authorityが 'stream' の場合、detail(配信id) は必須です。")
+        elif self.authority=="private":
+            if not self.detail is None:
+                raise ValueError("authorityが 'private' の場合、detailはNoneである必要があります。")
+        elif self.authority== "public":
+            if not isinstance(self.detail,str):
+                raise ValueError("authorityが 'public' の場合、detail(詳細な権限情報) は必須です。")
+        return self
+    
     @field_validator("type")
     @classmethod
     def validate_type_supported(cls, v: str) -> str:
@@ -43,20 +56,13 @@ class Message(BaseModel):
             raise ValueError(f"現在 '{v}' タイプは未対応です。'text' のみサポートしています。将来対応させる予定です")
         return v
 
-    @field_validator("location")
-    @classmethod
-    def validate_location_prefix(cls, v: str) -> str:
-        if not (v.startswith("public") or v.startswith("private")):
-            raise ValueError("location は 'public' または 'private' から始まる必要があります。")
-        return v
-
     @property
     def is_private(self) -> bool:
-        return self.location.startswith("private")
+        return self.authority=="private"
 
     @property
     def is_public(self) -> bool:
-        return self.location.startswith("public")
+        return self.authority=="public"
 
     @property
     def is_assistant(self) -> bool:
@@ -70,7 +76,6 @@ class Settings:
     設定読み込み用のクラス
     """
     speaker: int
-    setting_ai_text: str
     ai_model: str
     max_queue_size: int
     output: str
@@ -94,7 +99,6 @@ class Settings:
             public_key_str = key_file.read()
         return cls(
             speaker=int(data["Speaker"]),
-            setting_ai_text=data["SettingAItext"],
             ai_model=data["AI_model"],
             max_queue_size=int(data["Max_queue_size"]),
             output=data["Output"],

@@ -15,26 +15,35 @@ class LLMProvider():
     LLMにリクエストを投げる基本形
     tool callingするとき、温度が高いと厄介かも
     """
-    def __init__(self,setting:Settings):
+    def __init__(self,setting:Settings,stream_id:int):
         """
         ここでシステムプロンプトなどの初期設定の処理をする。
         ここでインターネットに繋がっているかの判定するための関数が欲しい
         """
-        self.get_content=Get_content(setting.db_url,setting.web_url)
+        self.get_content=Get_content(setting.DB_API,setting.WEB_URL)
         self.AImodel=setting.AImodel
-        if internet_access():
-            responce=requests.get(url=f"{setting.db_url}/system_prompt")
-        data=responce.json()
-        print(data)
-        #tool=Tools(setting)
-        #self.TOOLS, self.AVAILABLE_FUNCTIONS=tool.tools()
-        with open("data/conversation.json","r+",encoding="UTF-8")as f:
-            data=json.load(f)
-            if not data[0]["content"][0]["text"] == setting.settingtext:
-                data[0]["content"][0]["text"] =setting.settingtext
+
+        with open("data/system_prompt.md","r+",encoding="utf-8")as f:
+            prompt=f.read()
             f.seek(0)
-            json.dump(data,f,ensure_ascii=False)
             f.truncate()
+
+            if internet_access():
+                responce=requests.get(url=f"{setting.db_url}/system_prompt")
+                internet_prompt=responce.json()
+                if not (internet_prompt==prompt):
+                    print(f"システムプロンプト{prompt}")
+                    f.write(prompt)
+                
+            else:
+                print("警告！！　システムプロンプトを取得できませんでした。ネットの接続を確認してください。")
+                print("存在すれば、オフラインに保存されているシステムプロンプトを使用します。")
+
+        self.prompt=prompt
+        self.get_content.get_user_profile()
+        #tool=Tools(setting,stream_id)
+        #self.TOOLS, self.AVAILABLE_FUNCTIONS=tool.tools()
+
     
     async def create_comment(self,in_q:asyncio.Queue[Message],voice_q:asyncio.Queue,*out_q:asyncio.Queue[Message]):
         """
@@ -42,11 +51,19 @@ class LLMProvider():
         voice_qには句読点ごとに区切って、またout_qには回答を丸ごと入れる
         """
         #responce_comment=""
-        comment_list=[]
+        comment_list=[
+
+        ]
         while True:
-            comment_list=[]
+            comment_list=[
+                {
+                    "content":[
+                    {"type":"text","text":self.prompt}],
+                    "role":"system"
+                }
+            ]
             prompt = await in_q.get()  
-            comments=self.get_content.get_content(prompt.location)
+            comments=self.get_content.get_content(prompt.authority)
 
             for comment in comments:
                 if comment.role==role_type.user:
@@ -78,7 +95,7 @@ class LLMProvider():
             answer=response.choices[0].message.content
             answers =re.split(r"(?<=[、。？！\s])",answer)
             for q in out_q:
-                works.append(asyncio.create_task(q.put(Message(user_name="assistant",content=answer,type=prompt.type,location=prompt.location,stream_id=prompt.stream_id))))
+                works.append(asyncio.create_task(q.put(Message(user_name="assistant",content=answer,type=prompt.type,authority=prompt.authority,detail=prompt.detail))))
             for ans in answers:
                 works.append(asyncio.create_task(voice_q.put(ans)))
             await asyncio.gather(*works)    
@@ -93,7 +110,7 @@ class LLMProvider():
         message_list=[]
         for prompt in prompts:
             message_list.append({"content":prompt, "role": "user"})
-        message_list.append({"content":"これらの内容を要約して、100字以内にまとめてください。","role":"system"})
+        message_list.append({"content":"これらの内容を要約して、400字以内にまとめてください。","role":"system"})
         response = await litellm.acompletion(
                     model=self.AImodel, 
                     messages=message_list, 

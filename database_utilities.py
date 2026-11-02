@@ -8,7 +8,6 @@ import numpy as np
 import socket
 import json
 import asyncio
-from database_access import get_token
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:# Clusteringクラスの型チェックのため
     import new_LLM
@@ -45,12 +44,12 @@ class Save_anythings():
             if data.is_assistant:
                 save_id=await self.save_id.get()
                 if save_id:
-                    await loop.run_in_executor(None,lambda:self.public_database.conversation_save(data.stream_id,data.content,vector,data.location,save_id))
+                    await loop.run_in_executor(None,lambda:self.public_database.conversation_save(data.stream_id,data.content,vector,data.authority,save_id))
                    
                 else:
                     raise ValueError("assistantの回答は必ずuserの回答の後にDBに保存する必要があります")
             else:
-                temp=await loop.run_in_executor(None,lambda:self.public_database.conversation_save(data.stream_id,data.content,vector,data.location,False))
+                temp=await loop.run_in_executor(None,lambda:self.public_database.conversation_save(data.stream_id,data.content,vector,data.authority,False))
                 await self.save_id.put(temp)
 
         elif data.is_private:
@@ -61,7 +60,7 @@ class Save_anythings():
                 await loop.run_in_executor(None,lambda:self.private_database.conversation_save(data.content,vector,False))
                 
         else:
-            raise ValueError("locationに不明な値があります。")
+            raise ValueError("authorityに不明な値があります。")
 
 class Get_content():
     """
@@ -71,21 +70,27 @@ class Get_content():
         self.private_database=private_database("data/memory.db")
         self.public_database=public_database(db_url,web_url)
 
-    def get_content(self,location:str):
-        if location.startswith("private"):
+    def get_content(self,authority:str):
+        if authority=="private":
             self.private_database.user_get_comment("log")
             self.public_database.user_get_comment("log")
-        elif location.startswith("public"):# publicの場合もう少し細かく分ける必要があるかも？
+        elif authority=="public":# publicの場合もう少し細かく分ける必要があるかも？
             return self.public_database.user_get_comment("log")
         else:
-            raise ValueError("locationに不明な値があります")
+            raise ValueError("authorityに不明な値があります")
 
-    def get_user_profile(self,location:str):
+    def get_user_profile(self,authority:str):
         """
         ユーザーのプロフィールを取得する。
         """
+        if authority=="private":
+            self.private_database.get_profile()
+        elif authority=="public":# publicの場合もう少し細かく分ける必要があるかも？
+            return self.public_database.get_profile()
+        else:
+            raise ValueError("authorityに不明な値があります")
         
-        
+
 class Clustering:
     """
     クラスタリング処理についてまとめたもの

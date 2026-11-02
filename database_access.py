@@ -41,7 +41,7 @@ class database(ABC):
         pass
 
     @abstractmethod
-    def conversation_save(self,user_name:str,stream_id:int,text:str,vector:list[float],location:str):
+    def conversation_save(self,user_name:str,stream_id:int,text:str,vector:list[float],authority:str):
         """
         会話内容を保存する
         """
@@ -65,18 +65,25 @@ class database(ABC):
         pass
 
     @abstractmethod
-    def search(self,**con):
+    def search(self,word,vec):
         """
         LLMが検索する時用
         """
         pass
 
+    @abstractmethod
     def get_profile(self)->Profile:
         """
         ユーザーのプロフィールを返す関数
         """
+        pass
 
-
+    @abstractmethod
+    def get_topic(self,word)->list[str]:
+        """
+        最近の会話トピックを返す関数
+        """
+        pass
 
 class stream_database(database):
     """
@@ -89,7 +96,7 @@ class stream_database(database):
         os.environ.get("SUPABASE_KEY")
         )
 
-    def conversation_save(self, user_name, stream_id, text, vector, location):
+    def conversation_save(self, user_name, stream_id, text, vector, authority):
         """
         streamモードの会話保存はpublic_databaseクラスで行う
         """
@@ -266,7 +273,7 @@ class public_database(database):
         return response
 
 
-    def conversation_save(self,stream_id:int,text:str,vector:list[float],location:str,reply_id:int):
+    def conversation_save(self,stream_id:int,text:str,vector:list[float],authority:str,reply_id:int):
         #配信時はstream_idとreply_id両方があることからAIと判別する。
         if self.reply_id:
             responce=self._post_request_preset(
@@ -275,7 +282,7 @@ class public_database(database):
                         "stream_id": stream_id,
                         "text": text,
                         "vector":vector ,
-                        "location": location,
+                        "authority": authority,
                         "reply_id":reply_id
                         })
             return None
@@ -286,7 +293,7 @@ class public_database(database):
                                 "stream_id": stream_id,
                                 "text": text,
                                 "vector":vector ,
-                                "location": location,
+                                "authority": authority,
                                 "reply_id":None
                                 })
             return int(responce.json())
@@ -328,8 +335,8 @@ def get_token(db_url:str,web_url:str,file_name="data/token.json",)->str:
     username = "user"
     token=keyring.get_password(service_id,username)
     responce = requests.get(headers={"Authorization": f"Bearer {token}"},url=f"{db_url}/check")
-    print(responce.json())
-    if responce.json():
+    print(responce.status_code)
+    if responce.status_code==200:
         return token
     else:
         token=login(web_url)
