@@ -76,17 +76,11 @@ async def main():
     """
     ここで色々な初期設定の反映と、非同期処理の設定
     """
-    stream_id=None
-    stream_name=None
     booting=Booting()
     setting_data=await booting.loading()
-    if setting_data.input_type=="socialstream" or setting_data.input_type=="stream":
-        stream_id=int(input("stream_idを入力してください 0は入力しないでください"))
-        stream_name=input("stream_nameを入力してください")
-
     client_task = asyncio.to_thread(AsyncClient)
-    analyze_task = asyncio.to_thread(Analyze, setting_data.DB_API, setting_data.WEB_URL)
-    llm_task = asyncio.to_thread(LLMProvider, setting_data,stream_id)
+    analyze_task = asyncio.to_thread(Analyze, setting_data.DB_API, setting_data.WEB_URL,setting_data.stream_id)
+    llm_task = asyncio.to_thread(LLMProvider, setting_data)
     shutdown_task = asyncio.to_thread(Shutdown)
     # 4つの処理の完了を同時に待つ
     Client, analyze, llm, shutdown = await asyncio.gather(
@@ -95,13 +89,13 @@ async def main():
     
     match  setting_data.input_type:
         case "socialstream":
-            inputer=Inputs.socialstream_input(stream_id)
+            inputer=Inputs.socialstream_input(setting_data.stream_id)
         case "discord":
             inputer=Inputs.Discord_input()
         case "desktop":
             inputer=Inputs.Desktop_input()
         case "stream":
-            inputer=Inputs.Stream_input(stream_id,setting_data.Public_key)
+            inputer=Inputs.Stream_input(setting_data.stream_id,setting_data.Public_key)
         case _:
             raise ValueError("inputは現在その形式に対応していません。")
         
@@ -192,8 +186,8 @@ async def main():
             if not t.done():
                 t.cancel()
         print("記憶整理開始")
-        if stream_id:
-            clusterer.stream_clustering(llm,stream_id,stream_name)
+        if setting_data.stream_id:
+            clusterer.stream_clustering(llm,setting_data.stream_id,setting_data.stream_name)
         else:
             clusterer.user_clustering(llm,setting_data.DB_API,setting_data.WEB_URL)
 

@@ -4,26 +4,8 @@
 import json
 import re
 from dataclasses import dataclass
-from enum import StrEnum
-from pydantic import BaseModel,field_validator,model_validator
+from pydantic import BaseModel,field_validator
 from typing import Literal,Optional
-class media_type(StrEnum):
-    """
-    想定される入力の形式についてまとめたもの
-    """
-    text="text"
-    image="image"
-    video="video"
-    sound="sound"
-    file="file"
-class role_type(StrEnum):
-    """
-    想定される入力の形式についてまとめたもの
-    """
-    none="none"
-    user="user"
-    assistant="assistant"
-    system="system"#このロールは現在使われていないのでついでに追加しているだけ
 
 class Message(BaseModel):
     """
@@ -33,21 +15,7 @@ class Message(BaseModel):
     content: str  # コンテンツ 将来は画像データとかも入る
     type: Literal["text", "image", "video", "sound", "file"]  # コンテンツのデータがテキストか画像かなどを指定
     authority:Literal["private","public","stream"] #権限設定
-    detail:Optional[int|str]=None #publicの場合はdiscordの鯖名とかのより細かい権限について、streamの場合は配信id、privateの場合は何もなし
-
-    @model_validator(mode='after')
-    def detail_confirm(self) -> 'Message':
-        """authority の値に応じて、必要なフィールドの有無をチェックする"""
-        if self.authority == "stream":
-            if not isinstance(self.detail,int):
-                raise ValueError("authorityが 'stream' の場合、detail(配信id) は必須です。")
-        elif self.authority=="private":
-            if not self.detail is None:
-                raise ValueError("authorityが 'private' の場合、detailはNoneである必要があります。")
-        elif self.authority== "public":
-            if not isinstance(self.detail,str):
-                raise ValueError("authorityが 'public' の場合、detail(詳細な権限情報) は必須です。")
-        return self
+    detail:Optional[int|str]=None #publicの場合はdiscordの鯖名とかのより細かい権限について、streamまたはprivateの場合は未定(今後のために残す)
     
     @field_validator("type")
     @classmethod
@@ -68,8 +36,6 @@ class Message(BaseModel):
     def is_assistant(self) -> bool:
         return self.user_name == "assistant"
 
-
-
 @dataclass
 class Settings:
     """
@@ -78,14 +44,16 @@ class Settings:
     speaker: int
     ai_model: str
     max_queue_size: int
-    output: str
+    output: Literal["Sound","Unity","Text"]
     SoundEngine_path: str
     socialstream_path: str
-    soundEngine : str 
-    input_type:str
+    soundEngine : Literal["voicevox","aivis","coeiroink"]
+    input_type:Literal["socialstream","discord","desktop","stream"]
     Public_key:str
     DB_API:str
     WEB_URL:str
+    stream_id:int
+    stream_name:str
 
     @classmethod
     def from_json(cls, path: str) -> "Settings":
@@ -108,7 +76,9 @@ class Settings:
             input_type=data["Input_type"],
             DB_API=data["DB_API"],
             Public_key=public_key_str,
-            WEB_URL=data["WEB_URL"]
+            WEB_URL=data["WEB_URL"],
+            stream_id=data["stream_id"],
+            stream_name=data["stream_name"]
         )
 
 @dataclass
@@ -116,10 +86,10 @@ class Comment:
     """
     database_accessでコメント（ユーザー)
     """
-    role:role_type #ない場合は明示的にNoneにする。
+    role:Literal["none","user","assistant","system"] #ない場合は明示的にNoneにする。
     text:str
     vector:list[float]
-    timestamp:str
+    timestamp:Optional[str]=None
 
 @dataclass
 class clustering_result:

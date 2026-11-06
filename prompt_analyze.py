@@ -18,11 +18,11 @@ class Analyze:
     tableは開くテーブルの名前
     db_urlは外部のデーターベースに保存するときのAPIのurl
     """
-    def __init__(self,db_url:str,web_url:str):
+    def __init__(self,db_url:str,web_url:str,stream_id:int):
         self.interest_session = self.create_onnx_session("data/embedding_model.onnx")
         self.au_session = ort.InferenceSession("data/emotionToAu_v2.onnx")#このモデルはmpsに載せようとするとエラーが出る、多分opsetのバージョンが18のせい
         self.tokenizer = Tokenizer.from_file("data/embeddinggemma-2.json")
-        self.save_class=Save_anythings(db_url,web_url)
+        self.save_class=Save_anythings(db_url,web_url,stream_id)
 
     def create_onnx_session(self,model_path:str) ->ort.InferenceSession:
         """

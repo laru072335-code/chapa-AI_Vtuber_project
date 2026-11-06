@@ -25,12 +25,12 @@ from datetime import datetime
 from type_list import *
 from database_access import private_database,public_database,stream_database
 class Tools:
-    def __init__(self,setting:Settings,stream_id:int=None):
+    def __init__(self,setting:Settings):
         self.setting=setting
         self.private_database=private_database("data/memory.db")
         self.public_database=public_database(setting.DB_API,setting.WEB_URL)
-        if stream_id:
-            self.stream_database=stream_database(stream_id)
+        if setting.stream_id:
+            self.stream_database=stream_database(setting.stream_id)
         
     def now_time(self):
         return datetime.now().astimezone().isoformat()
