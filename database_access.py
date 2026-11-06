@@ -41,13 +41,13 @@ class database(ABC):
         pass
 
     @abstractmethod
-    def conversation_save(self,user_name:str,stream_id:int,text:str,vector:list[float],authority:str):
+    def conversation_save(self,user_name:str,text:str,vector:list[float],authority:str):
         """
         会話内容を保存する
         """
 
     @abstractmethod
-    def user_get_comment(self,mode:str)->list[Comment]:
+    def get_comment(self,mode:str)->list[Comment]:
         """
         クラスタリングまたは、短期記憶に使用するログを取得する\n
         modeは、要約のためのコメント取得なのか、短期記憶(ログ)のためのものなのか指定する
@@ -96,30 +96,57 @@ class stream_database(database):
         os.environ.get("SUPABASE_KEY")
         )
 
-    def conversation_save(self, user_name, stream_id, text, vector, authority):
-        """
-        streamモードの会話保存はpublic_databaseクラスで行う
-        """
-        raise NotImplementedError
+    def _name_to_id(self,username):
+        responce=self.supabase.table('user_profile').select('user_id').eq('user_name',username).execute()
+        if responce.data==[]:
+            print("警告!!そのユーザーはユーザー登録していません。")
+            return None
+        return responce.data[0]['user_id']
 
-    def user_get_comment(self,stream_id:int)->list[Comment]:
-        """
-        配信に対するデータ処理をするときは、stream_idで取得する方法のみに対応(場合分けする必要がないため)
-        """
+    def conversation_save(self, user_name:str,text:str, vector:list[float], authority:str):
+        user_id=self._name_to_id(user_name)
+        if user_id:
+            data={
+                "user_id":user_id,
+                "text":text,
+                "vector":vector,
+                "authority":authority
+            }
+            self.supabase.table('interest_records').insert(data).execute()
+        else:
+            print("警告！！ この内容は保存されません。")
+
+    def get_comment(self,mode:str)->list[Comment]:
+
         return_list=[]
-        response=self.supabase.table('interest_records').select("user_id,text,vector").eq('stream_id',stream_id).execute()
-        data=response.data
-        for element in data:
-            if element["user_id"]==0:
-                return_list.append(Comment(role_type.assistant,data["text"],vector_to_float_list(data["vector"])))
-            else:
-                return_list.append(Comment(role_type.user,data["text"],vector_to_float_list(data["vector"])))
+        if mode=="summary":
+            response=self.supabase.table('interest_records').select("user_id,text,vector").eq('stream_id',self.stream_id).execute()
+            self.supabase.table('interest_records').update({"is_clustered":True}).eq('stream_id',self.stream_id).execute()
+            data=response.data
+            for element in data:
+                if element["user_id"]==0:
+                    return_list.append(Comment("assistant",data["text"],vector_to_float_list(data["vector"]),None))
+                else:
+                    return_list.append(Comment("user",data["text"],vector_to_float_list(data["vector"]),None))
+            return return_list
+        
+        elif mode=="log":
+            response=self.supabase.table("interest_records").select("text,vector,reply_record_id,timestamp").eq('stream_id',self.stream_id).order('timestamp', desc=True).limit(30).execute()
 
-        return return_list
+            for row in response.data:
+                is_assistant = row.get("reply_record_id") is not None
+                if is_assistant:
+                    return_list.append(Comment("assistant",row["text"],vector_to_float_list(data["vector"]),row["timestamp"]))
+                else:
+                    return_list.append(Comment("user",row["text"],vector_to_float_list(data["vector"]),row["timestamp"]))
+            return return_list
 
-    def memory_update(self,stream_id:int,stream_name:str,stream_summary:str,topic_data:list[clustering_result]):
+        else:
+            raise ValueError("modeに変な値が入っています。")
+
+    def memory_update(self,stream_name:str,stream_summary:str,topic_data:list[clustering_result]):
         data={
-                "stream_id":stream_id,
+                "stream_id":self.stream_id,
                 "stream_name":stream_name,
                 "summary":stream_summary
             }
@@ -141,7 +168,10 @@ class stream_database(database):
         """
         stremモードにおいては、前の配信の要約を取り出す。
         """
-        self.supabase
+        self.supabase.table("").select().execute()
+
+    def get_topic(self):
+        raise NotImplementedError
         
 class private_database(database):
     """
@@ -211,13 +241,20 @@ class private_database(database):
         self.conn.commit()
         self.conn.close()
 
-    def user_get_comment(self,mode:str)->list[Comment]:
+    def get_comment(self,mode:str)->list[Comment]:
         if mode=="summary":
-            self.cur.execute("SELECT text, vector FROM interest_records WHERE is_clustered = false")
+            return_list=[]
+            self.cur.execute(
+                "SELECT text, vector,is_assistant FROM interest_records WHERE is_clustered = false")
             rows =self.cur.fetchall()
             self.cur.execute("UPDATE interest_records SET is_clustered = true WHERE is_clustered = false")
-            # BLOB(float32)をlist[float]に戻して返す
-            return [Comment(role_type.none,row[0],vector_to_float_list(row[1]))for row in rows]
+            for row in rows:
+                if row[2]:
+                    return_list.append(Comment("assistant",row[0],vector_to_float_list(row[1])))
+                else:
+                    return_list.append(Comment("user",row[0],vector_to_float_list(row[1])))
+            return return_list
+
         elif mode=="log":
             return_list=[]
             self.cur.execute(
@@ -226,9 +263,9 @@ class private_database(database):
             rows =self.cur.fetchall()
             for row in rows:
                 if row[2]:
-                    return_list.append(Comment(role_type.assistant,row[0],vector_to_float_list(row[1])))
+                    return_list.append(Comment("assistant",row[0],vector_to_float_list(row[1]),row[3]))
                 else:
-                    return_list.append(Comment(role_type.user,row[0],vector_to_float_list(row[1])))
+                    return_list.append(Comment("user",row[0],vector_to_float_list(row[1]),row[3]))
 
             return return_list
         else:
@@ -238,6 +275,9 @@ class private_database(database):
         with open("data/userprofile.json","r",encoding="UTF-8")as f:
             data=json.loads(f)
             return Profile(data["profile_summary"],data["last_updated"])
+
+    def get_topic(self):
+        raise NotImplementedError
 
 class public_database(database):
     """
@@ -273,13 +313,15 @@ class public_database(database):
         return response
 
 
-    def conversation_save(self,stream_id:int,text:str,vector:list[float],authority:str,reply_id:int):
+    def conversation_save(self,text:str,vector:list[float],authority:str,reply_id:int):
+        """
+        会話内容を保存するがどれがどれに対する返信かわかるようにn番目に保存したことを返り値として返す。
+        """
         #配信時はstream_idとreply_id両方があることからAIと判別する。
         if self.reply_id:
             responce=self._post_request_preset(
                         "conversation_save",
                         json={
-                        "stream_id": stream_id,
                         "text": text,
                         "vector":vector ,
                         "authority": authority,
@@ -290,7 +332,6 @@ class public_database(database):
             responce=self._post_request_preset(
                                 "conversation_save",
                                 json={
-                                "stream_id": stream_id,
                                 "text": text,
                                 "vector":vector ,
                                 "authority": authority,
@@ -306,26 +347,38 @@ class public_database(database):
     def search(self,**con):
         pass
 
-    def user_get_comment(self,mode:str)->list[Comment]:
+    def get_comment(self,mode:str)->list[Comment]:
         if mode=="summary":
             responce=self._get_request_preset("user_comments/summary")
             return_json=responce.json()
-            return [Comment(role_type.none,data["text"],vector_to_float_list(data["vector"])) for data in return_json]
+            return_list=[]
+            for data in return_json:
+                if data["is_assistant"]:
+                    return_list.append(Comment("assistant",data["text"],vector_to_float_list(data["vector"])))
+                else:
+                    return_list.append(Comment("user",data["text"],vector_to_float_list(data["vector"])))
+            return return_list
         elif mode=="log":
             responce=self._get_request_preset("user_comments/log")
             return_json=responce.json()
             return_list=[]
             for data in return_json:
                 if data["is_assistant"]:
-                    return_list.append(Comment(role_type.assistant,data["text"],vector_to_float_list(data["vector"])))
+                    return_list.append(Comment("assistant",data["text"],vector_to_float_list(data["vector"]),data["timestamp"]))
                 else:
-                    return_list.append(Comment(role_type.user,data["text"],vector_to_float_list(data["vector"])))
+                    return_list.append(Comment("user",data["text"],vector_to_float_list(data["vector"]),data["timestamp"]))
             return return_list
 
         else:
             raise ValueError("modeに変な値が入っています。")
 
-def get_token(db_url:str,web_url:str,file_name="data/token.json",)->str:
+    def get_profile(self):
+        raise NotImplementedError
+
+    def get_topic(self):
+        raise NotImplementedError
+
+def get_token(db_url:str,web_url:str)->str:
     """
     public_database用のトークンを取得する。
     初回のインスタンス作成時のみ外部で呼ぶ
@@ -347,7 +400,7 @@ if __name__=="__main__":
     db=public_database("https://chapa-api-three.vercel.app","https://commentsite.vercel.app")
     #db.create_table("aaa")
     #db.conversation_save() これはprompt_analyzeからテストしたほうがいいかも
-    p=db.user_get_comment("log")
+    p=db.get_comment("log")
     print(len(p))
     print(type(p[0].vector))
     #db.memory_update()

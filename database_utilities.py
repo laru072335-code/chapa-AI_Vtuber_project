@@ -29,10 +29,11 @@ class Save_anythings():
     """
     会話を自動で適切な保存領域に保存するためのもの
     """
-    def __init__(self,db_url:str,web_url:str):
+    def __init__(self,db_url:str,web_url:str,stream_id:int):
         self.private_database=private_database("data/memory.db")
         self.save_id=asyncio.Queue[int](maxsize=10) #とりあえず10
         self.public_database=public_database(db_url,web_url)
+        self.stream_database=stream_database(stream_id)
 
     async def conversation_save(self,data:Message,vector:list[float]):
         """
@@ -40,56 +41,76 @@ class Save_anythings():
         適したデータベースに保存する。
         """
         loop=asyncio.get_running_loop()
-        if data.is_public:
-            if data.is_assistant:
-                save_id=await self.save_id.get()
-                if save_id:
-                    await loop.run_in_executor(None,lambda:self.public_database.conversation_save(data.stream_id,data.content,vector,data.authority,save_id))
-                   
+        match data.authority:
+            case "private":
+                if data.is_assistant:
+                    await loop.run_in_executor(None,lambda: self.private_database.conversation_save(data.content,vector,True))
+                               
                 else:
-                    raise ValueError("assistantの回答は必ずuserの回答の後にDBに保存する必要があります")
-            else:
-                temp=await loop.run_in_executor(None,lambda:self.public_database.conversation_save(data.stream_id,data.content,vector,data.authority,False))
-                await self.save_id.put(temp)
+                    await loop.run_in_executor(None,lambda:self.private_database.conversation_save(data.content,vector,False))
+            case "public":
+                if data.is_assistant:
+                    save_id=await self.save_id.get()
+                    if save_id:
+                        await loop.run_in_executor(None,lambda:self.public_database.conversation_save(data.stream_id,data.content,vector,data.authority,save_id))
+                                   
+                    else:
+                        raise ValueError("assistantの回答は必ずuserの回答の後にDBに保存する必要があります")
+                    
+                else:
+                    temp=await loop.run_in_executor(None,lambda:self.stream_database.conversation_save(data.stream_id,data.content,vector,data.authority,False))
+                    await self.save_id.put(temp)
 
-        elif data.is_private:
-            if data.is_assistant:
-                await loop.run_in_executor(None,lambda: self.private_database.conversation_save(data.content,vector,True))
-               
-            else:
-                await loop.run_in_executor(None,lambda:self.private_database.conversation_save(data.content,vector,False))
-                
-        else:
-            raise ValueError("authorityに不明な値があります。")
+            case "stream":
+                if data.is_assistant:
+                    save_id=await self.save_id.get()
+                    if save_id:
+                        await loop.run_in_executor(None,lambda:self.stream_database.conversation_save(data.stream_id,data.content,vector,data.authority,save_id))
+                                    
+                    else:
+                        raise ValueError("assistantの回答は必ずuserの回答の後にDBに保存する必要があります")
+                    
+                else:
+                    temp=await loop.run_in_executor(None,lambda:self.stream_database.conversation_save(data.stream_id,data.content,vector,data.authority,False))
+                    await self.save_id.put(temp)
+
 
 class Get_content():
     """
     短期記憶を確保するためのもの
     """
-    def __init__(self,db_url:str,web_url:str):
+    def __init__(self,db_url:str,web_url:str,stream_id:int):
         self.private_database=private_database("data/memory.db")
         self.public_database=public_database(db_url,web_url)
+        self.stream_database=stream_database(stream_id)
 
     def get_content(self,authority:str):
-        if authority=="private":
-            self.private_database.user_get_comment("log")
-            self.public_database.user_get_comment("log")
-        elif authority=="public":# publicの場合もう少し細かく分ける必要があるかも？
-            return self.public_database.user_get_comment("log")
-        else:
-            raise ValueError("authorityに不明な値があります")
+        match authority:
+            case "private":
+                self.private_database.get_comment("log")
+                self.public_database.get_comment("log")
+                
+            case "public":
+                return self.public_database.get_comment("log")
+            case "stream":
+                return self.stream_database.get_comment()
+            case _:
+                raise ValueError("authorityに不明な値があります")
 
     def get_user_profile(self,authority:str):
         """
-        ユーザーのプロフィールを取得する。
+        ユーザーのプロフィールを取得する。ただし、stream権限の場合は、前回の配信の要約を取得します。
         """
-        if authority=="private":
-            self.private_database.get_profile()
-        elif authority=="public":# publicの場合もう少し細かく分ける必要があるかも？
-            return self.public_database.get_profile()
-        else:
-            raise ValueError("authorityに不明な値があります")
-        
+        match authority:
+            case "private":
+                return self.private_database.get_profile()
+            case "public":
+                return self.public_database.get_profile()
+            case "stream":
+                print("注意！この場合前回の配信の要約を取得します。")
+                return self.stream_database.get_profile()
+            case _:
+                raise ValueError("authorityに不明な値があります")
 
 class Clustering:
     """
@@ -105,10 +126,11 @@ class Clustering:
         return_list=[]
         if llm==None:
             raise ValueError("このメソッドを使用する場合はllmの値を入力してください")
-        # Comment.vectorはlist[float]（user_get_commentで正規化済み）
+        # Comment.vectorはlist[float]（get_commentで正規化済み）
         if not all(isinstance(i.vector,(list,tuple,np.ndarray)) for i in data):
             raise TypeError("Comment.vectorはlist[float]である必要があります")
         recive_vector=[i.vector for i in data]#ベクトルデータだけをとりだす。
+        recive_role=[i.role for i in data]
         recive_text=[i.text for i in data]#テキストデータだけ取り出す
         vectors=np.array(recive_vector,dtype=np.float32)
         
@@ -136,7 +158,7 @@ class Clustering:
         配信データのクラスタリング
         """
         database=stream_database(stream_id)
-        data=database.user_get_comment(stream_id)
+        data=database.get_comment()
         stream_summary=llm.create_summary([i.text for i in data])
         clustering_result=self._clustering(llm,data)
         database.memory_update(stream_id,stream_name,stream_summary,clustering_result)
@@ -151,13 +173,13 @@ class Clustering:
         else:
             database1=public_database(db_url,web_url)
             public_database_instant=database1
-        data=database1.user_get_comment("summary")
+        data=database1.get_comment("summary")
         clustering_result=self._clustering(llm,data)
         user_summary=llm.create_summary([i.text for i in data])
         database1.memory_update(user_summary,clustering_result)
 
         database2=private_database("data/memory.db")
-        data2=database2.user_get_comment("summary")
+        data2=database2.get_comment("summary")
         data.extend(data2)
         user_summary=llm.create_summary([i.text for i in data])
         clustering_result=self._clustering(llm,data)
