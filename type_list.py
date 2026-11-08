@@ -48,7 +48,7 @@ class Settings:
     SoundEngine_path: str
     socialstream_path: str
     soundEngine : Literal["voicevox","aivis","coeiroink"]
-    input_type:Literal["socialstream","discord","desktop","stream"]
+    input_type:Literal["socialstream","discord","unity","stream"]
     Public_key:str
     DB_API:str
     WEB_URL:str

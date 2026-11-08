@@ -8,6 +8,7 @@ from prompt_analyze import Analyze
 import sound_engine
 from new_LLM import LLMProvider
 from database_utilities import Clustering
+from Outputs.unityserver import unityserver 
 import asyncio
 import httpx
 from httpx import AsyncClient 
@@ -16,7 +17,7 @@ from type_list import *
 import Inputs
 import traceback
 import sys
-    
+
 class Booting:
     """
     起動時にやることをまとめたもの複数種類のアプリ対応に伴って変更する必要がある
@@ -88,20 +89,21 @@ async def main():
     Client, analyze, llm, shutdown = await asyncio.gather(
         client_task, analyze_task, llm_task, shutdown_task
     )
-    
+    server=None
     match  setting_data.input_type:
         case "socialstream":
             inputer=Inputs.socialstream_input(setting_data.stream_id)
         case "discord":
             inputer=Inputs.Discord_input()
-        case "desktop":
-            inputer=Inputs.Desktop_input()
+        case "unity":
+            unity_recive_queue=asyncio.Queue(maxsize=setting_data.max_queue_size)
+            server=unityserver(unity_recive_queue)
+            inputer=Inputs.Unity_input()
         case "stream":
             inputer=Inputs.Stream_input(setting_data.stream_id,setting_data.Public_key)
         case _:
             raise ValueError("inputは現在その形式に対応していません。")
         
-
     match setting_data.soundEngine:
         case "voicevox":
             voice=sound_engine.VOICEVOXProvider()
@@ -142,8 +144,8 @@ async def main():
 
             ]
         case"Unity":
-            from Outputs.unityserver import unityserver 
-            server=unityserver()
+            if server==None:
+                server=unityserver()
             worker=[
                 asyncio.create_task(server.main()),
                 asyncio.create_task(inputer.latest_get_comment(

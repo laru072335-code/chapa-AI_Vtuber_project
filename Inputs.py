@@ -13,7 +13,7 @@ class Input_format(ABC):
     @abstractmethod
     def __init__(self,authority:str,stream_id:int=False):
         """
-        特殊な場合を除き、public かprivateで指定する
+        特殊な場合を除き、public かprivateかstreamで指定する
         """
         self.authority=authority
         if stream_id:
@@ -81,13 +81,16 @@ class Discord_input(Input_format):
     async def is_ready(self):
         pass
 
-class Desktop_input(Input_format):
-    def __init__(self):
-        super().__init__("private")
-        pass
+class Unity_input(Input_format):
+    def __init__(self,unity_q:asyncio.Queue):
+        super().__init__()
+        self.unity_q=unity_q
 
     async def latest_get_comment(self,*out_q : asyncio.Queue[Message]):
-        pass
+        while True:
+            message =await self.unity_q.get()
+            for q in out_q:
+                await q.put()
 
     async def is_ready(self):
         pass 
