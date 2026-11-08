@@ -66,5 +66,5 @@
     "explorer.fileNesting.patterns": {
         "*.sln": "*.csproj"
     },
-    "dotnet.defaultSolution": "virtual Roid_0.2.slnx"
+    "dotnet.defaultSolution": "virtual Roid_0.3.1.slnx"
 }

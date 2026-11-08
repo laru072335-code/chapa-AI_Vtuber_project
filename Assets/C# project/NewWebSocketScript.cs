@@ -212,6 +212,10 @@ public class NewWebSocketScript : MonoBehaviour
 */
 {
     WebSocket ws;
+    // 外部からWebSocketの状態を確認するためのプロパティ
+    public WebSocketState State => ws != null ? ws.State : WebSocketState.Closed;
+    public bool IsConnected => ws != null && ws.State == WebSocketState.Open;
+
     [SerializeField]
     ManagerScript manager;
     [SerializeField]
@@ -430,6 +434,36 @@ public class NewWebSocketScript : MonoBehaviour
             ws.DispatchMessageQueue();
         }
     }
+    /// <summary>
+    /// 外部スクリプトからテキストメッセージを送信するためのメソッド
+    /// </summary>
+    public async Task SendTextAsync(string message)
+    {
+        if (IsConnected)
+        {
+            await ws.SendText(message);
+        }
+        else
+        {
+            Debug.LogWarning($"[NewWebSocketScript] 接続されていないため送信できませんでした (現在の状態: {State})");
+        }
+    }
+
+    /// <summary>
+    /// 外部スクリプトからバイナリデータを送信するためのメソッド
+    /// </summary>
+    public async Task SendBytesAsync(byte[] bytes)
+    {
+        if (IsConnected)
+        {
+            await ws.Send(bytes);
+        }
+        else
+        {
+            Debug.LogWarning($"[NewWebSocketScript] 接続されていないため送信できませんでした (現在の状態: {State})");
+        }
+    }
+
     public async Task DisconnectAsync()
     /*
     意図的に接続を切るためのもの
