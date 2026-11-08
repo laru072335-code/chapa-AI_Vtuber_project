@@ -3,7 +3,7 @@
 このファイルではプロンプトに対する様々な分析を行います。
 -----------------
 """
-
+import sys
 import onnxruntime as ort
 import numpy as np
 from tokenizers import Tokenizer
@@ -51,12 +51,12 @@ class Analyze:
         while True:
             sentence=await in_q.get()
             if au_vec_q:#返り値がある時だけ待つ。
-                au_vec=await loop.run_in_executor(None,lambda:self._analyze_and_memory(sentence,True,False))
+                au_vec=await loop.run_in_executor(None,lambda:self._analyze_and_memory(loop,sentence,True,False))
                 await au_vec_q.put(au_vec)
             else:
-                await loop.run_in_executor(None,lambda:self._analyze_and_memory(sentence))
+                await loop.run_in_executor(None,lambda:self._analyze_and_memory(loop,sentence))
 
-    def _analyze_and_memory(self,sentence:Message,au=False,test=False)->list[float]:
+    def _analyze_and_memory(self,loop,sentence:Message,au=False,test=False)->list[float]:
         """
         これでユーザーのプロンプトや、LLMの回答の感情分析などを行えます。
         auでau_vectorの生成をするかどうかを定義
@@ -70,15 +70,33 @@ class Analyze:
         "input_ids": np.array([ids], dtype=np.int64),
         "attention_mask": np.array([attention_mask], dtype=np.int64)
                     }
-        output = self.interest_session.run(["logits","hidden_states"], ort_inputs) # shape (1,6)
+        output = self.interest_session.run(["logits","embeddings"], ort_inputs) # shape (1,6)
         #print(output)
-        logits=output[0]#興味ベクトル
-        interest=output[1]#<class 'numpy.ndarray'>　感情ベクトル
-        emotion_probs = np.exp(logits) / np.sum(np.exp(logits), axis=-1, keepdims=True)
+        logits=output[0]# 感情ベクトル
+        interest=output[1][0]# 興味ベクトル
+        shifted_logits = logits - np.max(logits, axis=-1, keepdims=True)#オーバーフロー対策
+        emotion_probs = np.exp(shifted_logits) / np.sum(np.exp(shifted_logits), axis=-1, keepdims=True)
         print(f"感情ベクトル:{emotion_probs}")
         #ここから下はクラスタリングする時のためのデータ保存(のちにクラスタリングをすることで興味を推定する。)
+        # データベース保存をメインループへ安全に投げ、例外をキャッチできるようにする
+        print(f"興味ベクトル:{len(interest.tolist())}")
+        future = asyncio.run_coroutine_threadsafe(self.save_class.conversation_save(sentence, interest.tolist()),loop)
 
-        asyncio.create_task(self.save_class.conversation_save(sentence, interest.tolist()))
+          # コルーチン内でエラーが起きた場合にコンソールへトレースバックを表示するコールバック
+        def handle_future_result(f):
+            try:
+              f.result()  # ここで例外があればスローされる
+            except Exception as e:
+              import traceback
+
+              print(
+                  "--- conversation_save 内部でエラーが発生しました ---",
+                  file=sys.stderr,
+              )
+              traceback.print_exc()
+
+        future.add_done_callback(handle_future_result)
+
         if au:
             au_vector = self.au_session.run(["AU_vector"], {"emotion_vector": emotion_probs})
             au_list=au_vector[0].flatten().tolist()
@@ -101,10 +119,34 @@ class Analyze:
 
 #単体テスト用
 if __name__=="__main__":
-        analyze=Analyze("https://chapa-api-three.vercel.app","https://commentsite.vercel.app")
-        analyze._analyze_and_memory(Message("aaa","おはよう","text","private"),test= True)
-        analyze._analyze_and_memory(Message("assistant","元気？","text","private"),test= True)
-        analyze._analyze_and_memory(Message("aaa","うん！","text","private"),test= True)
-        analyze._analyze_and_memory(Message("assistant","やった！","text","private"),test= True)
-        analyze._analyze_and_memory(Message("aaa","？？？ｗ","text","private"),test= True)
+    import threading
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    # 設定ファイルの読み込み（実物）
+    setting_data = Settings.from_json("data/setting.jsonc")
+
+    print("=== Analyze インスタンス初期化（実物） ===")
+    analyze = Analyze(setting_data.DB_API, setting_data.WEB_URL, setting_data.stream_id)
+    print("初期化成功\n")
+
+    # 実物の非同期イベントループを別スレッドで開始
+    # （_analyze_and_memory 内部の asyncio.run_coroutine_threadsafe が安全に実行されるようにする）
+    loop = asyncio.new_event_loop()
+    loop_thread = threading.Thread(target=loop.run_forever, daemon=True)
+    loop_thread.start()
+
+    try:
+        test_msg = Message(
+            user_name="ああああ",
+            content="最新のAI技術やプログラミング言語にとても興味があります！",
+            type="text",
+            authority="stream"
+        )
+        au_list, interest, emotion_probs = analyze._analyze_and_memory(loop, test_msg)
+
+    finally:
+        loop.call_soon_threadsafe(loop.stop)
+        loop_thread.join(timeout=2.0)
         

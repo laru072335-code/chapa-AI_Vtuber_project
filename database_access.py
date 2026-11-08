@@ -103,9 +103,18 @@ class stream_database(database):
             return None
         return responce.data[0]['user_id']
 
-    def conversation_save(self, user_name:str,text:str, vector:list[float], authority:str):
+    def conversation_save(self, user_name:str,text:str, vector:list[float], authority:str,is_assistant:bool=False):
         user_id=self._name_to_id(user_name)
-        if user_id:
+        if is_assistant:
+            data={
+                    "user_id":0,
+                    "text":text,
+                    "vector":vector,
+                    "authority":authority
+                }
+            self.supabase.table('interest_records').insert(data).execute()
+        
+        elif user_id:
             data={
                 "user_id":user_id,
                 "text":text,
@@ -166,9 +175,15 @@ class stream_database(database):
 
     def get_profile(self):
         """
-        stremモードにおいては、前の配信の要約を取り出す。
+        stremモードにおいては、前の配信の要約を取り出す。（前の配信はstream_idが今の配信から1を引いたものであると仮定する。）
         """
-        self.supabase.table("").select().execute()
+        try:
+            responce=self.supabase.table("streamsummary").select("*").eq('stream_id',self.stream_id-1).execute()
+            data=responce.data[0] # 一件しか引っかからないはず
+            return Stream_summary(data["summary"],data["created_at"])
+        except:
+            print("警告！！　配信履歴が見つかりませんでした。Noneを返します。")
+            return None
 
     def get_topic(self):
         raise NotImplementedError
@@ -273,7 +288,7 @@ class private_database(database):
 
     def get_profile(self)->Profile:
         with open("data/userprofile.json","r",encoding="UTF-8")as f:
-            data=json.loads(f)
+            data=json.load(f)
             return Profile(data["profile_summary"],data["last_updated"])
 
     def get_topic(self):
@@ -318,7 +333,7 @@ class public_database(database):
         会話内容を保存するがどれがどれに対する返信かわかるようにn番目に保存したことを返り値として返す。
         """
         #配信時はstream_idとreply_id両方があることからAIと判別する。
-        if self.reply_id:
+        if reply_id:
             responce=self._post_request_preset(
                         "conversation_save",
                         json={
@@ -373,7 +388,13 @@ class public_database(database):
             raise ValueError("modeに変な値が入っています。")
 
     def get_profile(self):
-        raise NotImplementedError
+        responce=self._get_request_preset("get_profile")
+        data=responce.data
+        try:
+            return Profile(data["profile_summary"],data["last_updated"])
+        except:
+            print("ユーザーのプロフィールを取得できませんでした。Noneを返します。")
+            return None
 
     def get_topic(self):
         raise NotImplementedError
@@ -391,6 +412,8 @@ def get_token(db_url:str,web_url:str)->str:
     print(responce.status_code)
     if responce.status_code==200:
         return token
+    elif responce.status_code==404:
+        raise ValueError("db_urlが間違っています。")
     else:
         token=login(web_url)
         keyring.set_password(service_id,username,token)

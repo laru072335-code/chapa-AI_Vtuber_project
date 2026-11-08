@@ -8,6 +8,8 @@ import numpy as np
 import socket
 import json
 import asyncio
+import sys
+import traceback
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:# Clusteringクラスの型チェックのため
     import new_LLM
@@ -25,6 +27,19 @@ def internet_access(host: str = "1.1.1.1", port: int = 53, timeout: float = 3.0)
     except OSError:
         return False
     
+def _run_with_error_handling(func, *args, **kwargs):
+    """
+    別スレッドで実行される関数をラップし、例外発生時にトレースバックを標準エラー出力に出力して再送出する。
+    別スレッド実行時にエラーがぬりつぶされるのを防止する。
+    """
+    try:
+        return func(*args, **kwargs)
+    except Exception as e:
+        func_name = getattr(func, "__name__", str(func))
+        print(f"[database_utilities] 別スレッド実行時エラー ({func_name}): {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        raise
+
 class Save_anythings():
     """
     会話を自動で適切な保存領域に保存するためのもの
@@ -41,38 +56,86 @@ class Save_anythings():
         適したデータベースに保存する。
         """
         loop=asyncio.get_running_loop()
-        match data.authority:
-            case "private":
-                if data.is_assistant:
-                    await loop.run_in_executor(None,lambda: self.private_database.conversation_save(data.content,vector,True))
-                               
-                else:
-                    await loop.run_in_executor(None,lambda:self.private_database.conversation_save(data.content,vector,False))
-            case "public":
-                if data.is_assistant:
-                    save_id=await self.save_id.get()
-                    if save_id:
-                        await loop.run_in_executor(None,lambda:self.public_database.conversation_save(data.stream_id,data.content,vector,data.authority,save_id))
-                                   
+        try:
+            match data.authority:
+                case "private":
+                    if data.is_assistant:
+                        await loop.run_in_executor(
+                            None,
+                            _run_with_error_handling,
+                            self.private_database.conversation_save,
+                            data.content,
+                            vector,
+                            True
+                        )
                     else:
-                        raise ValueError("assistantの回答は必ずuserの回答の後にDBに保存する必要があります")
-                    
-                else:
-                    temp=await loop.run_in_executor(None,lambda:self.stream_database.conversation_save(data.stream_id,data.content,vector,data.authority,False))
-                    await self.save_id.put(temp)
+                        await loop.run_in_executor(
+                            None,
+                            _run_with_error_handling,
+                            self.private_database.conversation_save,
+                            data.content,
+                            vector,
+                            False
+                        )
+                case "public":
+                    if data.is_assistant:
+                        save_id=await self.save_id.get()
+                        if save_id:
+                            await loop.run_in_executor(
+                                None,
+                                _run_with_error_handling,
+                                self.public_database.conversation_save,
+                                data.content,
+                                vector,
+                                data.authority,
+                                save_id
+                            )
+                        else:
+                            raise ValueError("assistantの回答は必ずuserの回答の後にDBに保存する必要があります")
+                    else:
+                        temp=await loop.run_in_executor(
+                            None,
+                            _run_with_error_handling,
+                            self.public_database.conversation_save,
+                            data.content,
+                            vector,
+                            data.authority,
+                            False
+                        )
+                        await self.save_id.put(temp)
 
-            case "stream":
-                if data.is_assistant:
-                    save_id=await self.save_id.get()
-                    if save_id:
-                        await loop.run_in_executor(None,lambda:self.stream_database.conversation_save(data.stream_id,data.content,vector,data.authority,save_id))
-                                    
+                case "stream":
+                    if data.is_assistant:
+                            await loop.run_in_executor(
+                                None,
+                                _run_with_error_handling,
+                                self.stream_database.conversation_save,
+                                data.user_name,
+                                data.content,
+                                vector,
+                                data.authority,
+                                True
+                            )
                     else:
-                        raise ValueError("assistantの回答は必ずuserの回答の後にDBに保存する必要があります")
-                    
-                else:
-                    temp=await loop.run_in_executor(None,lambda:self.stream_database.conversation_save(data.stream_id,data.content,vector,data.authority,False))
-                    await self.save_id.put(temp)
+                        temp=await loop.run_in_executor(
+                            None,
+                            _run_with_error_handling,
+                            self.stream_database.conversation_save,
+                            data.user_name,
+                            data.content,
+                            vector,
+                            data.authority
+                        )
+
+                case _:
+                    raise ValueError(f"authorityに不明な値があります: {data.authority}")
+        except Exception as e:
+            print(
+                f"[database_utilities] conversation_save でエラーが発生しました (authority={data.authority}, is_assistant={data.is_assistant}): {e}",
+                file=sys.stderr
+            )
+            traceback.print_exc(file=sys.stderr)
+            raise
 
 
 class Get_content():
@@ -87,13 +150,17 @@ class Get_content():
     def get_content(self,authority:str):
         match authority:
             case "private":
-                self.private_database.get_comment("log")
-                self.public_database.get_comment("log")
+                comments=self.private_database.get_comment("log")+self.public_database.get_comment("log")
+                latest_30:list[Comment] = sorted(comments, 
+                        key=lambda x: x.timestamp, # 辞書やタプルからタイムスタンプの要素を指定
+                        reverse=True
+                    )[:30]
+                return latest_30
                 
             case "public":
                 return self.public_database.get_comment("log")
             case "stream":
-                return self.stream_database.get_comment()
+                return self.stream_database.get_comment("log")
             case _:
                 raise ValueError("authorityに不明な値があります")
 
@@ -129,9 +196,8 @@ class Clustering:
         # Comment.vectorはlist[float]（get_commentで正規化済み）
         if not all(isinstance(i.vector,(list,tuple,np.ndarray)) for i in data):
             raise TypeError("Comment.vectorはlist[float]である必要があります")
+        
         recive_vector=[i.vector for i in data]#ベクトルデータだけをとりだす。
-        recive_role=[i.role for i in data]
-        recive_text=[i.text for i in data]#テキストデータだけ取り出す
         vectors=np.array(recive_vector,dtype=np.float32)
         
         if vectors.shape[0] <5:
@@ -146,7 +212,7 @@ class Clustering:
             if label==-1:
                 continue
             cluster_vecs = normalized_vectors[labels == label]
-            cluster_items = [text for text, l in zip(recive_text, labels) if l == label]
+            cluster_items = [comment for comment, l in zip(data, labels) if l == label]
             centroid = np.mean(cluster_vecs, axis=0)
             centroid = centroid / np.linalg.norm(centroid)
             summary=llm.create_summary(cluster_items)
@@ -158,8 +224,8 @@ class Clustering:
         配信データのクラスタリング
         """
         database=stream_database(stream_id)
-        data=database.get_comment()
-        stream_summary=llm.create_summary([i.text for i in data])
+        data=database.get_comment("summary")
+        stream_summary=llm.create_summary(data)
         clustering_result=self._clustering(llm,data)
         database.memory_update(stream_id,stream_name,stream_summary,clustering_result)
 
@@ -167,21 +233,16 @@ class Clustering:
         """
         ユーザーデータのクラスタリング
         """
-        global public_database_instant
-        if public_database_instant:
-            database1=public_database_instant
-        else:
-            database1=public_database(db_url,web_url)
-            public_database_instant=database1
+        database1=public_database(db_url,web_url)
         data=database1.get_comment("summary")
         clustering_result=self._clustering(llm,data)
-        user_summary=llm.create_summary([i.text for i in data])
+        user_summary=llm.create_summary(data)
         database1.memory_update(user_summary,clustering_result)
 
         database2=private_database("data/memory.db")
         data2=database2.get_comment("summary")
         data.extend(data2)
-        user_summary=llm.create_summary([i.text for i in data])
+        user_summary=llm.create_summary(data)
         clustering_result=self._clustering(llm,data)
         database2.memory_update(user_summary,clustering_result)
 

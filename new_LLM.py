@@ -40,7 +40,6 @@ class LLMProvider():
 
         self.prompt=prompt
         #ここはinput_typeから権限を決めるようにする
-        self.profile=self.get_content.get_user_profile("private")
         #tool=Tools(setting)
         #self.TOOLS, self.AVAILABLE_FUNCTIONS=tool.tools()
 
@@ -50,16 +49,28 @@ class LLMProvider():
         応答を生成するためのメソッド
         voice_qには句読点ごとに区切って、またout_qには回答を丸ごと入れる
         """
-        #responce_comment=""
-        comment_list=[
-
-        ]
+        profile={}
         while True:
-            prompt = await in_q.get()  
+            prompt = await in_q.get()
+            self.profile=self.get_content.get_user_profile(prompt.authority)  
+            if isinstance(self.profile,Profile):
+                profile={
+                    "profile_summary": self.profile.user_summary,
+                    "last_updated": self.profile.last_updated
+                }
+            elif isinstance(self.profile,Stream_summary):
+                profile={
+                    "stream_name": "string",
+                    "summary": "string"
+                }
+            else:
+                print("プロフィールなどの事前情報を取得できませんでした。")
             comment_list=[
                 {
                     "content":[
-                    {"type":"text","text":self.prompt}],
+                    {"type":"text","text":self.prompt},
+                    {"type":"text","text":profile}
+                    ],
                     "role":"system"
                 }
             ]
@@ -89,7 +100,7 @@ class LLMProvider():
                 model=self.AImodel,
                 messages=comment_list,
                 tool_choice="auto",
-                tools=self.TOOLS,
+                #tools=self.TOOLS,
                 #stream=True
             )
             works=[]
@@ -103,15 +114,26 @@ class LLMProvider():
             
 
 
-    async def create_summary(self,prompts:list[str]):
+    def create_summary(self,prompts:list[Comment]):
         """
         クラスタ、配信、ユーザーの傾向などの要約作成のためのもの
         テキストのリストを渡す
         """
-        message_list=[{"content":"今から示す内容を要約して、400字以内にまとめてください。","role":"system"}]
-        for prompt in prompts:
-            message_list.append({"content":prompt, "role": "user"})
-        response = await litellm.acompletion(
+        message_list=[{"content":"Summarize the information provided below, and describe the subject of the conversation in 400 characters or less.","role":"system"}]
+        for comment in prompts:
+            if comment.role=="user":
+                message_list.append({"content":[
+                {"type":"text","text":comment.text}
+                ],
+                "role":"user"})
+            elif comment.role=="assistant":
+                message_list.append({"content":[
+                {"type":"text","text":comment.text}
+                ],
+                "role":"assistant"})
+            else:
+                raise ValueError(f"commentに想定されていないロール{comment.role}が入っています。")
+        response = litellm.completion(
                     model=self.AImodel, 
                     messages=message_list, 
                     #stream=True
