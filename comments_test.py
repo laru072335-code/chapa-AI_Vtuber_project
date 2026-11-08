@@ -7,56 +7,31 @@ import websockets
 import json
 import os
 from dotenv import load_dotenv
-"""Social Streamからコメント取得"""
-"""responceの例
-{'chatname': 'Steve_830970394883', 
-'nameColor': '#107516', 
-'chatbadges': '',
-'backgroundColor': '',
-'textColor': '', 
-'chatmessage': "!join The only way 2 do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle. As with all matters of the heart, you'll know when you find it.",
-'chatimg': '',
-'type': 'slack', 
-'hasDonation': '',
-'membership': 'SPONSORSHIP',
-'id': 5055,
-'timestamp': 1780895846391,
-'containsBadWords': False}
-"""
-load_dotenv()
-SESSION_ID = os.getenv("SESSON_KEY") # From your dock.html URL
-
-import asyncio
 import httpx
 
+load_dotenv()
+SESSION_ID = os.getenv("SESSION_KEY") # From your dock.html URL
+
 # あなたのSocial Stream NinjaのセッションIDを設定
+# ドキュメントに準拠し、エンドポイントにアクションを含める形に修正
 BASE_URL = f"https://io.socialstream.ninja/{SESSION_ID}"
 
 
 async def send_chat_message(message: str):
     """
-    外部のコメントとしてSSNのシステムに流し込む（公式ドキュメントのPOST仕様に準拠）
+    外部のコメントとしてSSNのシステムに流し込む（公式ドキュメントのHTTP POST仕様に準拠）
     """
-    import json
-
-    # 1. まず、内側のチャットデータ（オブジェクト）を作る
-    comment_data = {
-        "chatname": "MyManualBot",      # 表示される名前
+    # 1. 送信する全体のJSONボディを組み立てる
+    # api.md の仕様に基づき、value にはオブジェクトまたは文字列化したJSONを渡します
+    payload = {
+        "chatname": "ああああ",      # 表示される名前
         "chatmessage": message,         # 本文
         "type": "manual"                # アイコンなどの識別子
     }
 
-    # 2. 【重要】ドキュメントの仕様通り、内側のデータを一度「JSON文字列」に変換する
-    stringified_value = json.dumps(comment_data)
-
-    # 3. 送信する全体のJSONボディを組み立てる
-    payload = {
-        "action": "extContent",
-        "value": stringified_value  # 文字列化したデータを渡す
-    }
-
-    # 4. 【重要】POSTのURLはセッションIDまで（末尾に action や null は不要）
-    url = f"https://io.socialstream.ninja/{SESSION_ID}"
+    # HTTP POSTのURL（アクションをパスに含める形式、またはルートにJSONを送る形式）
+    # api.md: POST/PUT: https://io.socialstream.ninja/SESSION_ID/ACTION
+    url = f"https://io.socialstream.ninja/{SESSION_ID}/extContent"
 
     async with httpx.AsyncClient() as client:
         try:
@@ -96,16 +71,13 @@ async def main():
     asyncio.create_task(listen_to_chat())
     while True:
         comment = await asyncio.to_thread(input, "送信メッセージを入力: ")
-        if comment!="exit2":
+        if comment != "exit2":
             await send_chat_message(comment)
         else:
             break
         await asyncio.sleep(0.3)
 
 
-
 # 実行
 if __name__ == "__main__":
     asyncio.run(main())
-
-
