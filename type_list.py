@@ -15,7 +15,7 @@ class Message(BaseModel):
     content: str  # コンテンツ 将来は画像データとかも入る
     type: Literal["text", "image", "video", "sound", "file"]  # コンテンツのデータがテキストか画像かなどを指定
     authority:Literal["private","public","stream"] #権限設定
-    detail:Optional[int|str]=None #publicの場合はdiscordの鯖名とかのより細かい権限について、streamまたはprivateの場合は未定(今後のために残す)
+    detail:Optional[int|str]=None #publicの場合はdiscordの鯖名とかのより細かい権限について、streamまたはprivateの場合は未定(今後のために残す)将来ここをlistにするのもありかも？
     
     @field_validator("type")
     @classmethod
@@ -106,3 +106,10 @@ class Profile:
     """
     user_summary:str
     last_updated:str
+@dataclass
+class Stream_summary:
+    """
+    配信の要約を取得
+    """
+    stream_summary:str
+    created_at:str

@@ -10,6 +10,6 @@
     "Input_type": "socialstream", //何の種類のinputを使うのかを指定する、この時streamを選択すると、他にも様々な設定が必要なことに注意
     "DB_API": "https://chapa-otmv1j8up-chapa3.vercel.app", //ネット上のデータベースにアクセスするためのURLを指定する
     "WEB_URL": "https://commentsite.vercel.app", //ログイン処理などをしているサイト（コメントサイトのURL）
-    "stream_id": 1, //配信モードで動かす時に必要な配信を区別するためのid
-    "stream_name": "aaa"
+    "stream_id": 1, //配信モードで動かす時に必要な配信を区別するためのid 0はとして認識されない。
+    "stream_name": "あああ"
 }

@@ -78,6 +78,8 @@ async def main():
     """
     booting=Booting()
     setting_data=await booting.loading()
+    if setting_data.stream_id and (not setting_data.stream_name):
+        raise ValueError("stream_nameを設定してください。")
     client_task = asyncio.to_thread(AsyncClient)
     analyze_task = asyncio.to_thread(Analyze, setting_data.DB_API, setting_data.WEB_URL,setting_data.stream_id)
     llm_task = asyncio.to_thread(LLMProvider, setting_data)

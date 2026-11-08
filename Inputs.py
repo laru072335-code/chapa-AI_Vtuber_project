@@ -6,7 +6,6 @@ import json
 from abc import ABC, abstractmethod
 from type_list import *
 from supabase import acreate_client
-from dotenv import load_dotenv
 import jwt
        
 
@@ -38,7 +37,9 @@ class socialstream_input(Input_format):
     ここに様々なものをシステムに流し込むための、準備をする。
     """
     def __init__(self,stream_id):
-        super().__init__("public",stream_id,)
+        if not stream_id:
+            raise ValueError("stream_idの設定が必要です。")
+        super().__init__("stream",stream_id)
         load_dotenv()
         self.session_key=os.getenv("SESSION_KEY")
 
