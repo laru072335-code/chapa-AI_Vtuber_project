@@ -1,72 +1,89 @@
+"""
+embeddinggemma-2 + 感情分類ヘッドの ONNX エクスポートスクリプト
+"""
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import torch
 import torch.nn as nn
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer
+from sentence_transformers import SentenceTransformer
 import onnx
-DEVICE = "cpu"  # ONNX変換はCPU上で行うのが安全で確実です
 
-# ===== 1. ONNX化用に調整したモデルクラスの定義 =====
-# SentenceTransformerではなく、Hugging FaceのAutoModelをベースに直接テンソルを受ける構造にします
+DEVICE = "cpu"  # ONNXエクスポートはCPU上で行う
+MODEL_NAME = "google/embeddinggemma-2"
+
+# ===== 1. モデル定義 =====
 class ExportableEmotionClassifier(nn.Module):
-    def __init__(self, model_name="google/embeddinggemma-2", num_labels=6):
+    def __init__(self, model_name=MODEL_NAME, num_labels=6):
         super().__init__()
-        # 埋め込み用バックボーンモデル
-        self.backbone = AutoModel.from_pretrained(model_name)
+        # ★ device="cpu" を明示して、MacのMPSに勝手に送られないようにする
+        self.encoder = SentenceTransformer(
+            model_name, 
+            device="cpu", 
+            model_kwargs={"torch_dtype": torch.float32}
+        )
+        embedding_dim = self.encoder.get_embedding_dimension()  # 768 次元
         
-        # 自作の分類ヘッド
-        embedding_dim = getattr(self.backbone.config, "hidden_dim", getattr(self.backbone.config, "hidden_size", 768))
         hidden_dim = 512
         self.classifier = nn.Sequential(
             nn.Linear(embedding_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim),  # 学習時に入れた構造と完全に一致させる
             nn.GELU(),
             nn.Dropout(0.1),
             nn.Linear(hidden_dim, num_labels)
         )
 
     def forward(self, input_ids, attention_mask):
-        # 1. バックボーンを通して隠れ状態を取得
-        outputs = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
+        features = {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask
+        }
+        # SentenceTransformer の順伝播 (Transformer -> Pooling -> Normalize)
+        out = self.encoder(features)
         
-        # 2. 平均プーリング（Mean Pooling）で文埋め込みベクトル（意味ベクトル）を算出
-        input_mask_expanded = attention_mask.unsqueeze(-1).expand(outputs.last_hidden_state.size()).float()
-        sum_embeddings = torch.sum(outputs.last_hidden_state * input_mask_expanded, 1)
-        sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-        embeddings = sum_embeddings / sum_mask
-
-        # 3. 分類ヘッドを通して感情ロジットを算出
-        sentence_embeddings = embeddings.to(self.classifier[0].weight.dtype)
-        logits = self.classifier(sentence_embeddings)
-
-        # ★ 意味ベクトル（embeddings）と感情スコア（logits）を両方返す
+        # 768次元・正規化済み埋め込みベクトル
+        embeddings = out["sentence_embedding"]
+        
+        # 感情ロジット
+        logits = self.classifier(embeddings)
+        
         return embeddings, logits
 
-# ===== 2. モデルの初期化と学習済み重みのロード =====
-model_name = "google/embeddinggemma-2"
-export_model = ExportableEmotionClassifier(model_name, num_labels=6)
+# ===== 2. モデル初期化と学習済み重みのロード =====
+export_model = ExportableEmotionClassifier(MODEL_NAME, num_labels=6)
 
-# 保存された.pthをロード（キー名の不一致に対応するためstrict=Falseにするか、classifierのみロード）
-state_dict = torch.load("embeddinggemma-2.pth", map_location=DEVICE)
-export_model.load_state_dict(state_dict, strict=False)
-
-# ★ ここが超重要：モデル全体の型を FP32 (float) に揃え、評価モードにする
+# すべて確実に CPU 上・Float32 に統一
+export_model.to(DEVICE)
 export_model = export_model.float()
 export_model.eval()
 
+pth_path = "embeddinggemma-2.pth"  # Kaggleからダウンロードした重みファイル名
+if os.path.exists(pth_path):
+    print(f"学習済み重みをロード中: {pth_path}")
+    state_dict = torch.load(pth_path, map_location=DEVICE, weights_only=True)
+    export_model.load_state_dict(state_dict, strict=True)
+    print("✅ 重みのロードに成功しました！")
+else:
+    print(f"⚠️ {pth_path} が見つかりません。")
+
 # ===== 3. ダミー入力の準備 =====
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-dummy_text = "task: clustering | input: テスト入力です"
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+dummy_text = "task: classification | query: テスト入力です"
 dummy_inputs = tokenizer(dummy_text, return_tensors="pt", padding=True, truncation=True)
 
-# ===== 4. ONNX化の実行 =====
+# ダミー入力も確実に CPU に配置
+input_ids = dummy_inputs["input_ids"].to(DEVICE)
+attention_mask = dummy_inputs["attention_mask"].to(DEVICE)
+
+# ===== 4. ONNX エクスポート =====
 onnx_path = "embedding_model.onnx"
 
 torch.onnx.export(
     export_model,
-    (dummy_inputs["input_ids"], dummy_inputs["attention_mask"]),
+    (input_ids, attention_mask),
     onnx_path,
     export_params=True,
-    opset_version=18,
+    opset_version=18,       # ログの指示通り 18 を指定
     do_constant_folding=True,
     input_names=["input_ids", "attention_mask"],
     output_names=["embeddings", "logits"],
@@ -76,25 +93,23 @@ torch.onnx.export(
         "embeddings": {0: "batch_size"},
         "logits": {0: "batch_size"}
     },
-    dynamo=False
+    dynamo=False           # ★ 超重要：TorchDynamoではなく安定したTorchScriptトレーサーを使う
 )
 
-print(f"ONNXモデルの出力完了: {onnx_path}")
-# 出力されたばかりのONNXファイルを読み込む
-onnx_model = onnx.load(f"{onnx_path}")
-fixed_count = 0
+print(f"✅ ONNXモデルの出力完了: {onnx_path}")
 
-# 全てのノードを走査し、Split演算子のバグ原因「num_outputs」を削除
-for node in onnx_model.graph.node:
-    if node.op_type == "Split":
-        for attr in list(node.attribute):
-            if attr.name == "num_outputs":
-                node.attribute.remove(attr)
-                fixed_count += 1
-
-if fixed_count > 0:
-    # 上書き保存
-    onnx.save(onnx_model, f"{onnx_path}.onnx")
-    print(f"🔧 修正成功: {fixed_count}個の不整合ノードを自動クリーンアップしました。")
-    print(f"🚀 これで '{f"{onnx_path}.onnx"}' はそのまま推論（InferenceSession）で使用可能です！")
-
+# ===== 5. Split ノードの不要属性クリーンアップ =====
+try:
+    onnx_model = onnx.load(onnx_path)
+    fixed_count = 0
+    for node in onnx_model.graph.node:
+        if node.op_type == "Split":
+            for attr in list(node.attribute):
+                if attr.name == "num_outputs":
+                    node.attribute.remove(attr)
+                    fixed_count += 1
+    if fixed_count > 0:
+        onnx.save(onnx_model, onnx_path)
+        print(f"🔧 {fixed_count} 個の Split 属性をクリーンアップしました。")
+except Exception as e:
+    print(f"クリーンアップスキップ: {e}")
