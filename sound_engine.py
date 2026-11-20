@@ -46,6 +46,7 @@ class VOICEVOXProvider(SoundProvider):
                         )
             data,rate = sf.read(io.BytesIO(audio.content))
             current_time=0.1#累計時間　最初の無音時間の関係で0.1秒プラスされている。
+            #viseme_list
             for moras in sound["accent_phrases"]:
                 for  mora in moras["moras"]:
                     viseme=mora["vowel"].lower()
@@ -54,6 +55,7 @@ class VOICEVOXProvider(SoundProvider):
                     viseme_length=consonaunt+vowel
                     current_time += viseme_length
                     viseme_result_list.append([viseme,current_time])
+                    
             await sound_out_q.put([data,rate])
             await viseme_out_q.put(viseme_result_list)
     
@@ -107,10 +109,21 @@ class AivisProvider(SoundProvider):
 class COEIROINKProvider(SoundProvider):
     """
     COEIROINKで音声を生成するクラス(未実装)
+    
     """
+    async def generate_voice(self, Client: AsyncClient, speaker, in_q: asyncio.Queue, sound_out_q: asyncio.Queue, viseme_out_q: asyncio.Queue):
+        while True:
+            answer=await in_q.get()
+            viseme_result_list=[]
+
+            await sound_out_q.put([data,rate])
+            await viseme_out_q.put(viseme_result_list)
+            
+
+
+
     async def is_ready(self,Client:AsyncClient)->bool:
             pass
 
-    async def generate_voice(self, Client: AsyncClient, speaker, in_q: asyncio.Queue, sound_out_q: asyncio.Queue, viseme_out_q: asyncio.Queue):
-        raise NotImplementedError
+   
 

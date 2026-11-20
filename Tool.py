@@ -23,14 +23,12 @@ AIが使うツールについてまとめたもの
 """
 from datetime import datetime
 from type_list import *
-from database_access import private_database,public_database,stream_database
+from database_access import private_database,public_database
 class Tools:
     def __init__(self,setting:Settings):
         self.setting=setting
         self.private_database=private_database("data/memory.db")
         self.public_database=public_database(setting.DB_API,setting.WEB_URL)
-        if setting.stream_id:
-            self.stream_database=stream_database(setting.stream_id)
         
     def now_time(self):
         return datetime.now().astimezone().isoformat()
@@ -39,17 +37,19 @@ class Tools:
         ベクトル検索する時の下準備用
         """
         pass
-    def stream_log_search(self,word,vector_search=False):
-        pass
+    def stream_log_search(self,stream_id,word,vector_search=False):
+        public_database.search()
     
-    def user_log_search(self,word,vector_search=False):
-        pass
+    def user_log_search(self,user_name,word,vector_search=False):
+        public_database.search()
+        private_database.search()
 
-    def get_stream_topic(self,word=None):
-        pass
+    def get_stream_topic(self,stream_id,word=None):
+        public_database.get_topic()
 
-    def get_user_topic(self,word=None):
-        pass
+    def get_user_topic(self,user_name,word=None):
+        public_database.get_topic()
+        private_database.get_topic()
    
     def tools(self):
         """

@@ -19,12 +19,12 @@ class Analyze:
     db_urlは外部のデーターベースに保存するときのAPIのurl
     """
     def __init__(self,db_url:str,web_url:str,stream_id:int):
-        self.interest_session = self.create_onnx_session("data/embedding_model.onnx")
+        self.interest_session = self._create_onnx_session("data/embedding_model.onnx")
         self.au_session = ort.InferenceSession("data/emotionToAu_v2.onnx")#このモデルはmpsに載せようとするとエラーが出る、多分opsetのバージョンが18のせい
         self.tokenizer = Tokenizer.from_file("data/embeddinggemma-2.json")
         self.save_class=Save_anythings(db_url,web_url,stream_id)
 
-    def create_onnx_session(self,model_path:str) ->ort.InferenceSession:
+    def _create_onnx_session(self,model_path:str) ->ort.InferenceSession:
         """
         自動でGPUかCPUかMシリーズかを判定して効率よくインターセッションを作るもの
         """
@@ -42,6 +42,26 @@ class Analyze:
         # CPU
         providers.append('CPUExecutionProvider')
         return ort.InferenceSession(model_path, providers=providers)
+
+    def generate_vector(self,content:str):
+        encoded = self.tokenizer.encode(f"task: clustering | input:{content}")
+        ids = encoded.ids
+        attention_mask = encoded.attention_mask
+        ort_inputs = {
+        "input_ids": np.array([ids], dtype=np.int64),
+        "attention_mask": np.array([attention_mask], dtype=np.int64)
+                    }
+        output = self.interest_session.run(["logits","embeddings"], ort_inputs) # shape (1,6)
+        #print(output)
+        logits=output[0]# 感情ベクトル
+        interest=output[1][0]# 興味ベクトル
+        shifted_logits = logits - np.max(logits, axis=-1, keepdims=True)#オーバーフロー対策
+        emotion_probs = np.exp(shifted_logits) / np.sum(np.exp(shifted_logits), axis=-1, keepdims=True)
+        print(f"感情ベクトル:{emotion_probs}")
+        #ここから下はクラスタリングする時のためのデータ保存(のちにクラスタリングをすることで興味を推定する。)
+        # データベース保存をメインループへ安全に投げ、例外をキャッチできるようにする
+        print(f"興味ベクトル:{len(interest.tolist())}")
+        return (emotion_probs,interest)
 
     async def analyze_and_memory(self,in_q:asyncio.Queue[Message],au_vec_q=False):
         """
@@ -63,23 +83,7 @@ class Analyze:
 
         testはpytest用、引数auと一緒にTrueにしないこと
         """
-        encoded = self.tokenizer.encode(f"task: clustering | input:{sentence.content}")
-        ids = encoded.ids
-        attention_mask = encoded.attention_mask
-        ort_inputs = {
-        "input_ids": np.array([ids], dtype=np.int64),
-        "attention_mask": np.array([attention_mask], dtype=np.int64)
-                    }
-        output = self.interest_session.run(["logits","embeddings"], ort_inputs) # shape (1,6)
-        #print(output)
-        logits=output[0]# 感情ベクトル
-        interest=output[1][0]# 興味ベクトル
-        shifted_logits = logits - np.max(logits, axis=-1, keepdims=True)#オーバーフロー対策
-        emotion_probs = np.exp(shifted_logits) / np.sum(np.exp(shifted_logits), axis=-1, keepdims=True)
-        print(f"感情ベクトル:{emotion_probs}")
-        #ここから下はクラスタリングする時のためのデータ保存(のちにクラスタリングをすることで興味を推定する。)
-        # データベース保存をメインループへ安全に投げ、例外をキャッチできるようにする
-        print(f"興味ベクトル:{len(interest.tolist())}")
+        emotion_probs,interest=self.generate_vector(sentence.content)
         future = asyncio.run_coroutine_threadsafe(self.save_class.conversation_save(sentence, interest.tolist()),loop)
 
           # コルーチン内でエラーが起きた場合にコンソールへトレースバックを表示するコールバック

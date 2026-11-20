@@ -10,6 +10,7 @@ import json
 import asyncio
 import sys
 import traceback
+from datetime import datetime
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:# Clusteringクラスの型チェックのため
     import new_LLM
@@ -152,7 +153,7 @@ class Get_content():
             case "private":
                 comments=self.private_database.get_comment("log")+self.public_database.get_comment("log")
                 latest_30:list[Comment] = sorted(comments, 
-                        key=lambda x: x.timestamp, # 辞書やタプルからタイムスタンプの要素を指定
+                        key=lambda x: datetime.fromisoformat(x.timestamp.replace("Z", "+00:00")), # 辞書やタプルからタイムスタンプの要素を指定
                         reverse=True
                     )[:30]
                 return latest_30

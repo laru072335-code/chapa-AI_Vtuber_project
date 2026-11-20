@@ -68,6 +68,7 @@ class database(ABC):
     def search(self,word,vec):
         """
         LLMが検索する時用
+        streamには存在しない
         """
         pass
 
@@ -75,6 +76,7 @@ class database(ABC):
     def get_profile(self)->Profile:
         """
         ユーザーのプロフィールを返す関数
+        streamの場合は前回の配信の要約を返す。
         """
         pass
 
@@ -82,6 +84,8 @@ class database(ABC):
     def get_topic(self,word)->list[str]:
         """
         最近の会話トピックを返す関数
+        streamには存在しない
+
         """
         pass
 
@@ -170,9 +174,6 @@ class stream_database(database):
 
         self.supabase.table('topic_cluster').insert(data).execute()
 
-    def search(self,**con):
-        pass
-
     def get_profile(self):
         """
         stremモードにおいては、前の配信の要約を取り出す。（前の配信はstream_idが今の配信から1を引いたものであると仮定する。）
@@ -184,6 +185,9 @@ class stream_database(database):
         except:
             print("警告！！　配信履歴が見つかりませんでした。Noneを返します。")
             return None
+
+    def search(self):
+        raise NotImplementedError
 
     def get_topic(self):
         raise NotImplementedError
@@ -245,10 +249,7 @@ class private_database(database):
                 for topics in topic_data]
         self.cur.executemany("INSERT INTO topic_history (topic, vector) VALUES (?, ?)",data)
         self.conn.commit()
-    
-    def search(self,**con):
-        pass
-            
+
     def end(self):
         """
         最後にファイルを閉じる時に実行
@@ -293,6 +294,9 @@ class private_database(database):
 
     def get_topic(self):
         raise NotImplementedError
+
+    def search(self):
+        pass
 
 class public_database(database):
     """
@@ -359,9 +363,6 @@ class public_database(database):
         self._post_request_preset("user_topic_save",json=payload)
         self._post_request_preset("user_profile_update",json={"profile_summary":user_summary})
     
-    def search(self,**con):
-        pass
-
     def get_comment(self,mode:str)->list[Comment]:
         if mode=="summary":
             responce=self._get_request_preset("user_comments/summary")
@@ -396,8 +397,30 @@ class public_database(database):
             print("ユーザーのプロフィールを取得できませんでした。Noneを返します。")
             return None
 
-    def get_topic(self):
-        raise NotImplementedError
+    def get_topic(self,mode):
+        """
+        - mode "user"か"stream"を入力して、userのトピック検索かstreamのトピック検索を分ける
+        """
+        if mode=="user":
+            self._post_request_preset()
+        elif mode=="stream":
+            self._post_request_preset()
+        else:
+            print("modeに変な値が入っています。Noneを返します。")
+            return None
+
+
+    def search(self,mode):
+        """
+        - mode "user"か"stream"を入力して、userのログ検索かstreamのログ検索を分ける
+        """
+        if mode=="user":
+            self._post_request_preset()
+        elif mode=="stream":
+            self._post_request_preset()
+        else:
+            print("modeに変な値が入っています。Noneを返します。")
+            return None
 
 def get_token(db_url:str,web_url:str)->str:
     """
