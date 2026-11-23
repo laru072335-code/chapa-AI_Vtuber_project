@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>みんなのコメント</h2>
+<div class="comment-box">
+    {% if not comments %}
+    <p>まだコメントはありません</p>
+    {% else%}
+    {% for comment in comments%}
+    <p class="comment">{{comment.user}}:{{comment.message}}</p>
+    {% endfor %}
+    {% endif %}
+</div>
+<h4> コメント入力</h4>
+<form action="/comments" method="POST">
+    <label for="comment">コメントを入力</label>
+    <input name="comment" type="text"></input>
+    <br>
+    <button type="submit" class="btn btn-primary">投稿</button>
+</form>
+
+<!-- モーダル本体 -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fs-5" id="exampleModalLabel">メッセージ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                {{log}}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if log%}
+<script>
+    // ページ読み込み時、logがあればモーダルを自動表示
+    var myModal = new bootstrap.Modal(document.getElementById('exampleModal'));
+    myModal.show();
+</script>
+{% endif %}
+{% endblock %}

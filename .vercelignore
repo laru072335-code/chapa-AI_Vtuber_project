@@ -1,0 +1,12 @@
+.pixi
+.git
+.venv
+__pycache__
+.env
+.pytest_cache
+.git*
+for_test
+pixi.toml
+pixi.lock
+server.py
+.vscode

@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>アカウントの設定</h2>
+<h4>名前変更</h4>
+<form action="/account_setting" method="POST">
+    <label for="name">名前変更</label>
+    <input name="name" id="name"></input>
+    <br>
+    <button type="submit" class="btn btn-primary">設定を適応</button>
+</form>
+<h4>アカウント連携</h4>
+<button type="button" class="btn btn-primary" onclick="">ディスコードと連携</button>
+<button type="button" class="btn btn-primary" onclick="">Twitchと連携</button>
+
+{% endblock %}

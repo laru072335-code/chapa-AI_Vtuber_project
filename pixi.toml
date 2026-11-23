@@ -1,0 +1,38 @@
+[workspace]
+channels = ["conda-forge"]
+name = "comment-site"
+platforms = ["osx-arm64", "win-64","linux-64"]
+version = "0.1.0"
+
+[tasks]
+awake="python server.py"
+test={ cmd ="pytest -v -s --tb=long",default-environment = "test-env" }
+check= { cmd ="ruff check",default-environment = "test-env" }
+audit= { cmd ="pip-audit",default-environment = "test-env" }
+npm="npm install -g vercel"
+
+[dependencies]
+python = "3.14.*"
+nodejs = "*"
+
+[pypi-dependencies]
+supabase="*"
+quart="*"
+Pyjwt="*"
+multidict="*"
+urllib3="*"
+werkzeug="*"
+dotenv="*"
+
+[feature.test.pypi-dependencies]
+ruff= "*"
+pip-audit="*"
+pytest="*"
+pytest-asyncio="*"
+
+[environments]
+test-env=["test"]
+
+#npm install -g vercel
+# もし、どこを治せばいいかわからなくなった場合は、反映されていない可能性があるので、Cmd + Shift + Rで強制更新をする
+# また、localhostで開く、127.0.0.1で開かない

@@ -1,0 +1,7 @@
+# pixi environments
+.pixi
+__pycache__
+.vervel
+pixi.lock
+.vscode
+.env*
