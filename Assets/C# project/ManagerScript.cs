@@ -37,9 +37,7 @@ public class ManagerScript : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        /*
-        今は使っていない
-        */
+
     }
     public void ThrowViseme(List<Viseme> visemes)
     {

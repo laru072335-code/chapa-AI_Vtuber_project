@@ -1,36 +1,11 @@
 using UnityEngine;
 using NativeWebSocket;
 using System.Threading.Tasks;
-using System.Text.Json.Serialization;
 
-// 小文字（camelCase）でシリアライズされるようにコンバーターを指定
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum MediaType
-{
-    text,
-    image,
-    video,
-    sound,
-    file
-}
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum Authority
-{
-    @private,
-    @public
-}
-public class Message
-{
-    public string user_name; // ユーザーの名前
-    public string content; // コンテンツ 将来は画像データとかも入る
-    public MediaType type; //コンテンツのデータがテキストか画像かなどを指定
-    public Authority authority; //権限設定
-    readonly string detail = null; //細かい権限情報などを送る用、今はnull
-}
 public class Inputer : MonoBehaviour
 {
     [SerializeField]
-    private NewWebSocketScript webSocketScript;
+    private WebSocketScript webSocketScript;
 
     [Header("テスト送信設定")]
     [SerializeField]
