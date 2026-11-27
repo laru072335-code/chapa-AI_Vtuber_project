@@ -6,5 +6,39 @@ exclude = [
     "Now_nouse",
     "*.build"
 ]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    ".pixi/*",
+    "data/*",
+    "Now_nouse/*",
+    "comments_test.py",
+    "test_tool_call.py",
+    "test.py",
+    "clean_license_file.py"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass"
+]
+
+[tool.mutmut]
+source_paths = ["type_list.py"]
+pytest_add_cli_args = ["--cov=.", "--cov-config=../.coveragerc", "--cov-context=test", "-o", "testpaths=tests/test_type_list.py"]
+
+
+
+
+
+
+
+
 [tasks]
 lint = "ruff check chapa_core.py"
+

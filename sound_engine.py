@@ -112,6 +112,7 @@ class COEIROINKProvider(SoundProvider):
     
     """
     async def generate_voice(self, Client: AsyncClient, speaker, in_q: asyncio.Queue, sound_out_q: asyncio.Queue, viseme_out_q: asyncio.Queue):
+        raise NotImplementedError
         while True:
             answer=await in_q.get()
             viseme_result_list=[]
@@ -123,7 +124,7 @@ class COEIROINKProvider(SoundProvider):
 
 
     async def is_ready(self,Client:AsyncClient)->bool:
-            pass
+        raise NotImplementedError
 
    
 

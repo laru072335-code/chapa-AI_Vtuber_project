@@ -28,6 +28,7 @@ dotenv="*"
 setuptools=">=84.1.0"
 supabase=">2.0.0"
 keyring="*"
+psutil="*"
 
 [feature.test.pypi-dependencies]
 torch = "*"
@@ -41,6 +42,8 @@ transformers = "*"
 Pillow="*"
 torchvision="*"
 huggingface_hub="*"
+pytest-cov = ">=7.1.0, <8"
+mutmut = ">=3.8.1, <4"
 
 
 [feature.test.dependencies]
@@ -81,6 +84,9 @@ testrun="python chapa_core.py"
 instrumentrun="pyinstrument -o profile.html chapa_core.py"
 memrayrun="memray run chapa_core.py" 
 test={ cmd ="pytest -v -s --tb=long",env = { KMP_DUPLICATE_LIB_OK = "TRUE" }}
+test-real-db={ cmd ="pytest -v -s --tb=long --db-mode=real",env = { KMP_DUPLICATE_LIB_OK = "TRUE" }}
+coverage={ cmd ="pytest --cov=. --cov-report=term-missing --cov-report=html:coverage_report",env = { KMP_DUPLICATE_LIB_OK = "TRUE" }}
+mutation-test={ cmd ="mutmut run",env = { KMP_DUPLICATE_LIB_OK = "TRUE" }}
 check="ruff check"
 comment="python comments_test.py"
 license={cmd="pip-licenses --with-license-file --format=plain-vertical --output-file LICENSE.txt && python clean_license_file.py",default-environment = "license"}

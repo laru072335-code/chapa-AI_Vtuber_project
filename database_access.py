@@ -197,7 +197,7 @@ class private_database(database):
     プライベートな会話履歴などを保存するためのデータベース
     """
     def __init__(self,dbname:str):
-        self.conn = sqlite3.connect(dbname)
+        self.conn = sqlite3.connect(dbname, check_same_thread=False)
         self.cur = self.conn.cursor()
 
     def create_table(self,user_name:str):

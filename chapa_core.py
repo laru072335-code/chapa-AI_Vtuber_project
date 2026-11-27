@@ -17,27 +17,43 @@ from type_list import *
 import Inputs
 import traceback
 import sys
+import psutil
 
-class Booting:
+class Booting_And_Shutdown:
     """
-    起動時にやることをまとめたもの複数種類のアプリ対応に伴って変更する必要がある
+    起動時と終了時にやることをまとめたもの
+    複数種類のアプリ対応に伴って変更した
     """
     def __init__(self):
-        pass
+        self.soft_name_list:list[str]=[]
     
-    async def Mac_open_other_app(self):
+    def Mac_open_other_app(self,soft_name):
         """macでの起動について自動化したもの"""
-        subprocess.run(["open","-a","VOICEVOX"])
-        subprocess.run(['open','-a',"virtual_roid 0.2.app"])
-        subprocess.run(["open","-a","socialstream"])
+        self.soft_name_list.append(soft_name)
+        subprocess.run(["open","-a",soft_name])
 
-    async def Window_open_other_app(self,voicevox_path:str,socialstream_path:str):
+    def Window_open_other_app(self,path:str):
         """windowsでの起動について自動化したもの"""
-        os.startfile(voicevox_path)
-        os.startfile("virtual Roid_0.2.exe")
-        os.startfile(socialstream_path) 
+        self.soft_name_list.append(path)
+        os.startfile(path)
 
-   
+    def Mac_shutdown(self):
+        """macでの終了について自動化したもの"""
+        for soft_name in self.soft_name_list:
+            subprocess.run(['osascript', '-e', f'quit app "{soft_name}"'])
+        subprocess.run(['osascript', '-e', 'quit app "virtual_roid 0.2.app"'])
+
+    def Window_shutdown(self):
+        """windowsでの終了について自動化したもの"""
+        for soft_name in self.soft_name_list:
+            for proc in psutil.process_iter(["name", "exe"]):
+                try:
+                    exe_path = proc.info.get("exe")
+                    if exe_path and exe_path.lower() == soft_name.lower():
+                        proc.kill()  # 強制終了（taskkill /F 相当）
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+
     async def loading(self)->Settings:
         """
         設定の読み込みを行うもの
@@ -54,51 +70,48 @@ class Booting:
         while not (await sound_engine_object.is_ready(Client) and await input_object.is_ready()):
             await asyncio.sleep(0.1)
 
-class Shutdown:
-    """
-    最後このアプリを閉じるときにすることをまとめたクラス。
-    """
-    def __init__(self):
-        pass
-
-    def Mac_shutdown(self):
-        """macでの終了について自動化したもの"""
-        subprocess.run(['osascript', '-e', 'quit app "VOICEVOX"'])
-        subprocess.run(['osascript', '-e', 'quit app "virtual_roid 0.2.app"'])
-        subprocess.run(['osascript', '-e', 'quit app "socialstream"'])
-
-    def Window_shutdown(self):
-        """windowsでの終了について自動化したもの"""
-        subprocess.run(["taskkill", "/F", "/IM", "VOICEVOX.exe"], stderr=subprocess.DEVNULL)
-        subprocess.run(["taskkill", "/F", "/IM", "virtual Roid_0.2.exe"], stderr=subprocess.DEVNULL)
-        subprocess.run(["taskkill", "/F", "/IM", "socialstream.exe"], stderr=subprocess.DEVNULL)
-
 async def main():
     """
     ここで色々な初期設定の反映と、非同期処理の設定
     """
-    booting=Booting()
-    setting_data=await booting.loading()
+    platform=None
+    if sys.platform.startswith("win"):
+        booting_and_shutdown=Booting_And_Shutdown()
+        platform="win"
+    elif sys.platform.startswith("darwin"):
+        booting_and_shutdown=Booting_And_Shutdown()
+        platform="darwin"
+    else:
+        raise NotImplementedError(f"このアプリは{sys.platform}環境ではサポートされていません。")
+    
+    setting_data=await booting_and_shutdown.loading()
     if setting_data.stream_id and (not setting_data.stream_name):
         raise ValueError("stream_nameを設定してください。")
     client_task = asyncio.to_thread(AsyncClient)
     analyze_task = asyncio.to_thread(Analyze, setting_data.DB_API, setting_data.WEB_URL,setting_data.stream_id)
     llm_task = asyncio.to_thread(LLMProvider, setting_data)
-    shutdown_task = asyncio.to_thread(Shutdown)
     # 4つの処理の完了を同時に待つ
-    Client, analyze, llm, shutdown = await asyncio.gather(
-        client_task, analyze_task, llm_task, shutdown_task
+    Client, analyze, llm, = await asyncio.gather(
+        client_task, analyze_task, llm_task, 
     )
     server=None
     match  setting_data.input_type:
         case "socialstream":
             inputer=Inputs.socialstream_input(setting_data.stream_id)
+            if platform=="win":
+                booting_and_shutdown.Window_open_other_app(setting_data.socialstream_path)
+            else:
+                booting_and_shutdown.Mac_open_other_app("socialstream")
         case "discord":
             inputer=Inputs.Discord_input()
         case "unity":
             unity_recive_queue=asyncio.Queue(maxsize=setting_data.max_queue_size)
             server=unityserver(unity_recive_queue)
-            inputer=Inputs.Unity_input()
+            inputer=Inputs.Unity_input(unity_recive_queue)
+            if platform=="win":
+                booting_and_shutdown.Window_open_other_app("virtual Roid_0.2.exe")
+            else:
+                booting_and_shutdown.Mac_open_other_app("virtual_roid 0.2.app")
         case "stream":
             inputer=Inputs.Stream_input(setting_data.stream_id,setting_data.Public_key)
         case _:
@@ -107,6 +120,10 @@ async def main():
     match setting_data.soundEngine:
         case "voicevox":
             voice=sound_engine.VOICEVOXProvider()
+            if platform=="win":
+                booting_and_shutdown.Window_open_other_app(setting_data.SoundEngine_path)
+            else:
+                booting_and_shutdown.Mac_open_other_app("VOICEVOX")
         case "aivis":
             voice=sound_engine.AivisProvider()
         case"coeiroink":
@@ -114,14 +131,7 @@ async def main():
         case _:
             raise ValueError("SoundEngineは現在、voicevox,aivisspeech,coerioinkにしか対応していません。いずれかを入力してください。")
     
-    if sys.platform.startswith("win"):
-        await booting.Window_open_other_app(setting_data.SoundEngine_path,setting_data.socialstream_path) 
-    elif sys.platform.startswith("darwin"):
-        await booting.Mac_open_other_app()
-    else:
-        raise NotImplementedError(f"このアプリは{sys.platform}環境ではサポートされていません。")
-    #await loading.Linux_open_other_app(setting_data["voicevox_path"],setting_data["socialstream_path"])
-    await booting.before_check(Client,voice,inputer)
+    await booting_and_shutdown.before_check(Client,voice,inputer)
 
     #簡単な部分だけ型を厳密にしている
     comments_subtitle_queue=asyncio.Queue[Message](maxsize=setting_data.max_queue_size)
@@ -146,6 +156,10 @@ async def main():
         case"Unity":
             if server==None:
                 server=unityserver()
+                if platform=="win":
+                    booting_and_shutdown.Window_open_other_app("virtual Roid_0.2.exe")
+                else:
+                    booting_and_shutdown.Mac_open_other_app("virtual_roid 0.2.app")
             worker=[
                 asyncio.create_task(server.main()),
                 asyncio.create_task(inputer.latest_get_comment(
@@ -180,10 +194,10 @@ async def main():
     except (KeyboardInterrupt,asyncio.CancelledError):    
         print("正常な",end="")
         clusterer=Clustering()
-        if sys.platform.startswith("win"):
-            shutdown.Window_shutdown()
-        elif sys.platform.startswith("darwin"):
-            shutdown.Mac_shutdown()
+        if platform=="win":
+            booting_and_shutdown.Window_shutdown()
+        elif platform=="darwin":
+            booting_and_shutdown.Mac_shutdown()
         else:
             raise NotImplementedError(f"このアプリは{sys.platform}環境ではサポートされていないはずです。")
         for t in worker:
@@ -198,9 +212,9 @@ async def main():
     except httpx.ReadTimeout:
         print("接続がタイムアウトしました。パソコンのスペックが足りていないか、リクエストの数が多すぎます。")
         if sys.platform.startswith("win"):
-            shutdown.Window_shutdown()
+            booting_and_shutdown.Window_shutdown()
         elif sys.platform.startswith("darwin"):
-            shutdown.Mac_shutdown()
+            booting_and_shutdown.Mac_shutdown()
         else:
             raise NotImplementedError(f"このアプリは{sys.platform}環境ではサポートされていないはずです。")
 

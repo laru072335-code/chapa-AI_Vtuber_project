@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from type_list import *
 from supabase import acreate_client
 import jwt
+import msgpack
        
 
 class Input_format(ABC):
@@ -88,12 +89,23 @@ class Unity_input(Input_format):
 
     async def latest_get_comment(self,*out_q : asyncio.Queue[Message]):
         while True:
-            message =await self.unity_q.get()
+            byte =await self.unity_q.get()
+            message=msgpack.unpackb(byte,raw=False)
+            print(message)
+
             for q in out_q:
-                await q.put()
+                await q.put(Message(user_name=message[0],content=message[1],type=message[2],authority=message[3],detail=message[4]))
 
     async def is_ready(self):
-        pass 
+        """
+        つながった時の確認用メッセージを確認するまで待機
+        """
+        recive=await self.unity_q.get()
+        if recive=="Connect":
+            return True
+        else:
+            raise ConnectionError("正常な接続ができませんでした")
+
 
 class Stream_input(Input_format):
     """
