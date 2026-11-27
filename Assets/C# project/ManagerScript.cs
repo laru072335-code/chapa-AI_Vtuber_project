@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 /*
 受信用スクリプトから受け取ったデータを指定のタイミングで流すためのもの
 */
@@ -37,6 +38,16 @@ public class ManagerScript : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        switch (SceneManager.GetActiveScene().name)
+        {
+            case "conversationScene":
+                break;
+            case "streamScene":
+                break;
+            default:
+                Debug.LogError("よくわからないシーンが詠み込まれています。");
+                break;
+        }
 
     }
     public void ThrowViseme(List<Viseme> visemes)

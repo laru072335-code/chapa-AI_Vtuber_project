@@ -91,7 +91,7 @@ public class WebSocketScript : MonoBehaviour
     {
         Debug.Log("✅ Connected to Python server");
         //textMesh.text = "✅ Connected to Python server";
-        ws.SendText("Start");
+        ws.SendText("Connect");
     }
     private void OnMessage(byte[] bytes)
     /*
@@ -199,20 +199,6 @@ public class WebSocketScript : MonoBehaviour
         if (ws != null && ws.State == WebSocketState.Open)
         {
             ws.DispatchMessageQueue();
-        }
-    }
-    /// <summary>
-    /// 外部スクリプトからテキストメッセージを送信するためのメソッド
-    /// </summary>
-    public async Task SendTextAsync(string message)
-    {
-        if (IsConnected)
-        {
-            await ws.SendText(message);
-        }
-        else
-        {
-            Debug.LogWarning($"[NewWebSocketScript] 接続されていないため送信できませんでした (現在の状態: {State})");
         }
     }
 

@@ -19,13 +19,13 @@ public class testScript : MonoBehaviour
     float[] viseme_time;
     VisemeScript visemeScript;
     AuScript auScript;
+    [SerializeField]
     SubtitleScript subtitleScript;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         visemeScript = GetComponent<VisemeScript>();
         auScript = GetComponent<AuScript>();
-        subtitleScript = GetComponent<SubtitleScript>();
 
     }
 

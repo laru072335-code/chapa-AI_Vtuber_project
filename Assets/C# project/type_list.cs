@@ -2,7 +2,6 @@ using UnityEngine;
 using MessagePack;
 using System;
 using UnityEngine.Scripting;
-using System.Text.Json.Serialization;
 /*
 pythonからviseme、subtitles、AUを受け取って、それぞれのスクリプトに流し込むプログラム
 */
@@ -203,8 +202,6 @@ public class SoundData
 
 
 
-// 小文字（camelCase）でシリアライズされるようにコンバーターを指定
-[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum MediaType
 {
     text,
@@ -213,17 +210,31 @@ public enum MediaType
     sound,
     file
 }
-[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum Authority
 {
     @private,
     @public
 }
+[MessagePackObject]
 public class Message
 {
+    [Key(0)]
     public string user_name; // ユーザーの名前
+    [Key(1)]
     public string content; // コンテンツ 将来は画像データとかも入る
+    [Key(2)]
     public MediaType type; //コンテンツのデータがテキストか画像かなどを指定
+    [Key(3)]
     public Authority authority; //権限設定
-    readonly string detail = "a";  //細かい権限情報などを送る用、今はnull
+    [Key(4)]
+    public string? detail;  //細かい権限情報などを送る用、今はnull
+    public Message() { }
+    public Message(string user_name, string content, Authority authority)
+    {
+        this.user_name = user_name;
+        this.content = content;
+        type = MediaType.text;//今はテキストのみ
+        this.authority = authority;
+
+    }
 }

@@ -41,6 +41,10 @@ public class creatingmeemo
     自作
     monitor
     https://www.cgtrader.com/free-3d-models/electronics/computer/curved-monitor-e2737448-0dc6-43d6-a52a-2c2a8387f4bf
+    送信の矢印
+    https://www.ac-illust.com/main/detail.php?id=28004943
+    
+    testで、シェイプキーなどを動かす場合、streammodeで動かすこと
     
 */
 

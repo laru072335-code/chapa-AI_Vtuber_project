@@ -1,11 +1,20 @@
 using UnityEngine;
 using NativeWebSocket;
 using System.Threading.Tasks;
+using TMPro;
+using UnityEngine.UI;
+using MessagePack;
+using MessagePack.Formatters;
 
 public class Inputer : MonoBehaviour
 {
     [SerializeField]
     private WebSocketScript webSocketScript;
+
+    [SerializeField] private TMP_InputField inputField;//input
+
+    [SerializeField] private Button send;//送信用ボタン
+    [SerializeField] private string user_name;//送信用ボタン
 
     [Header("テスト送信設定")]
     [SerializeField]
@@ -19,22 +28,27 @@ public class Inputer : MonoBehaviour
     private async void Update()
     {
         // 例: Spaceキーを押した時にWebSocketの状態を確認してメッセージを送信
-        if (Input.GetKeyDown(KeyCode.KeypadEnter))
+        if (send.IsPressed())
         {
-            await SendInputMessage(testMessage);
+            if (string.IsNullOrWhiteSpace(inputField.text)) return;
+            await SendInputMessage(inputField.text);
+            inputField.text = "";
+            inputField.ActivateInputField();
         }
     }
 
     /// <summary>
     /// WebSocketの状態を確認した上でメッセージを送信するメソッド
     /// </summary>
-    public async Task SendInputMessage(string message)
+    public async Task SendInputMessage(string prompt)
     {
         if (webSocketScript == null)
         {
             Debug.LogError("[Inputer] NewWebSocketScript の参照が設定されていません。");
             return;
         }
+        Message message = new Message(user_name, prompt, Authority.@private);
+        byte[] bytes = MessagePackSerializer.Serialize(message);
 
         // 状態（ws_states）を確認
         WebSocketState currentState = webSocketScript.State;
@@ -43,7 +57,7 @@ public class Inputer : MonoBehaviour
         if (currentState == WebSocketState.Open)
         {
             Debug.Log($"[Inputer] メッセージを送信します: {message}");
-            await webSocketScript.SendTextAsync(message);
+            await webSocketScript.SendBytesAsync(bytes);
         }
         else
         {

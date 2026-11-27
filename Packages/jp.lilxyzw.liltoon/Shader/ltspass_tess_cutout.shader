@@ -747,7 +747,7 @@ Shader "Hidden/ltspass_tess_cutout"
             #define LIL_OPTIMIZE_USE_VERTEXLIGHT
             #pragma skip_variants LIGHTMAP_ON DYNAMICLIGHTMAP_ON LIGHTMAP_SHADOW_MIXING SHADOWS_SHADOWMASK DIRLIGHTMAP_COMBINED _MIXED_LIGHTING_SUBTRACTIVE
             #define LIL_SRP_VERSION_MAJOR 17
-            #define LIL_SRP_VERSION_MINOR 4
+            #define LIL_SRP_VERSION_MINOR 6
             #define LIL_SRP_VERSION_PATCH 0
 
             #define LIL_TESSELLATION
@@ -1239,7 +1239,7 @@ Shader "Hidden/ltspass_tess_cutout"
             #define LIL_OPTIMIZE_USE_FORWARDADD
             #define LIL_OPTIMIZE_USE_VERTEXLIGHT
             #define LIL_SRP_VERSION_MAJOR 17
-            #define LIL_SRP_VERSION_MINOR 4
+            #define LIL_SRP_VERSION_MINOR 6
             #define LIL_SRP_VERSION_PATCH 0
 
             #define LIL_TESSELLATION

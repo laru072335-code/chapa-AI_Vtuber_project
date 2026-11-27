@@ -9,7 +9,7 @@ EditorBuildSettings:
     path: Assets/Scenes/First Scene.unity
     guid: ff7a5f54fc21f45d292d3117c2ec7f00
   - enabled: 1
-    path: Assets/Scenes/MainScene.unity
+    path: Assets/Scenes/streamScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
     path: Assets/Scenes/testScene.unity

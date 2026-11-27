@@ -193,7 +193,7 @@ Shader "Hidden/ltspass_lite_transparent"
         Tags { "ShaderModel" = "4.5"}
         HLSLINCLUDE
             #define LIL_SRP_VERSION_MAJOR 17
-            #define LIL_SRP_VERSION_MINOR 4
+            #define LIL_SRP_VERSION_MINOR 6
             #define LIL_SRP_VERSION_PATCH 0
 
             #pragma target 4.5
@@ -645,7 +645,7 @@ Shader "Hidden/ltspass_lite_transparent"
         Tags {}
         HLSLINCLUDE
             #define LIL_SRP_VERSION_MAJOR 17
-            #define LIL_SRP_VERSION_MINOR 4
+            #define LIL_SRP_VERSION_MINOR 6
             #define LIL_SRP_VERSION_PATCH 0
 
             #pragma exclude_renderers d3d11_9x

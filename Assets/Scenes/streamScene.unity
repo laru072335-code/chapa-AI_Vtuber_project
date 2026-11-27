@@ -283,7 +283,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 0
-  m_ActiveFontFeatures: 6e72656b
+  m_ActiveFontFeatures: 6e72656bu
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -609,6 +609,86 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!1 &407129648
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 407129652}
+  - component: {fileID: 407129651}
+  - component: {fileID: 407129650}
+  - component: {fileID: 407129649}
+  m_Layer: 0
+  m_Name: System
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &407129649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 407129648}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a194fee1cef8045c0ab72f7c3e78916e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SubtitleScript
+  displayTime: 4
+  prompt: {fileID: 246279711}
+  answer: {fileID: 1840369822}
+--- !u!114 &407129650
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 407129648}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e19739cfb1f64484dab1c277b069649e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WebSocketScript
+  manager: {fileID: 407129651}
+  sound: {fileID: 0}
+  textMesh: {fileID: 0}
+--- !u!114 &407129651
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 407129648}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee73be9e8207241899a40611e50b7f57, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ManagerScript
+  visemeScript: {fileID: 1822056162}
+  auScript: {fileID: 1822056163}
+  subtitleScript: {fileID: 407129649}
+  soundScript: {fileID: 1822056172}
+--- !u!4 &407129652
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 407129648}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -13.31488, y: -0, z: -9.52285}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1596,9 +1676,6 @@ PrefabInstance:
       addedObject: {fileID: 1375513069}
     - targetCorrespondingSourceObject: {fileID: -7246390273606883628, guid: 1442c462804934253b0e0b4c755110e6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1822056161}
-    - targetCorrespondingSourceObject: {fileID: -7246390273606883628, guid: 1442c462804934253b0e0b4c755110e6, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1822056160}
     - targetCorrespondingSourceObject: {fileID: -7246390273606883628, guid: 1442c462804934253b0e0b4c755110e6, type: 3}
       insertIndex: -1
@@ -1608,16 +1685,10 @@ PrefabInstance:
       addedObject: {fileID: 1822056162}
     - targetCorrespondingSourceObject: {fileID: -7246390273606883628, guid: 1442c462804934253b0e0b4c755110e6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1822056165}
-    - targetCorrespondingSourceObject: {fileID: -7246390273606883628, guid: 1442c462804934253b0e0b4c755110e6, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1822056169}
     - targetCorrespondingSourceObject: {fileID: -7246390273606883628, guid: 1442c462804934253b0e0b4c755110e6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1822056172}
-    - targetCorrespondingSourceObject: {fileID: -7246390273606883628, guid: 1442c462804934253b0e0b4c755110e6, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1822056173}
     - targetCorrespondingSourceObject: {fileID: -7246390273606883628, guid: 1442c462804934253b0e0b4c755110e6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1822056176}
@@ -2044,21 +2115,6 @@ MonoBehaviour:
   blink_shape_key_name1: "\u30A6\u30A3\u30F3\u30AF"
   blink_shape_key_name2: "\u30A6\u30A3\u30F3\u30AF\u53F3"
   blink_time: 0.3
---- !u!114 &1822056161
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1822056157}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e19739cfb1f64484dab1c277b069649e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::NewWebSocketScript
-  manager: {fileID: 1822056173}
-  sound: {fileID: 0}
-  textMesh: {fileID: 0}
 --- !u!114 &1822056162
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2084,21 +2140,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AuScript
   au_Rate_of_change: 2
---- !u!114 &1822056165
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1822056157}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a194fee1cef8045c0ab72f7c3e78916e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SubtitleScript
-  displayTime: 4
-  prompt: {fileID: 246279711}
-  answer: {fileID: 1840369822}
 --- !u!114 &1822056169
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2125,6 +2166,7 @@ MonoBehaviour:
   answer: "\u5143\u6C17\uFF1F"
   viseme: []
   viseme_time: []
+  subtitleScript: {fileID: 407129649}
 --- !u!114 &1822056172
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2138,22 +2180,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SoundScript
   audioSource: {fileID: 1822056176}
---- !u!114 &1822056173
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1822056157}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ee73be9e8207241899a40611e50b7f57, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ManagerScript
-  visemeScript: {fileID: 1822056162}
-  auScript: {fileID: 1822056163}
-  subtitleScript: {fileID: 1822056165}
-  soundScript: {fileID: 1822056172}
 --- !u!82 &1822056176
 AudioSource:
   m_ObjectHideFlags: 0
@@ -2358,7 +2384,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 0
-  m_ActiveFontFeatures: 6e72656b
+  m_ActiveFontFeatures: 6e72656bu
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -2407,3 +2433,4 @@ SceneRoots:
   - {fileID: 888503788}
   - {fileID: 971131650}
   - {fileID: 471392044}
+  - {fileID: 407129652}
