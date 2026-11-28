@@ -7,6 +7,7 @@ import re
 import requests
 from type_list import *
 from database_utilities import Get_content,internet_access
+import json
 #from Tool import Tools
 
 class LLMProvider():
@@ -69,7 +70,7 @@ class LLMProvider():
                 {
                     "content":[
                     {"type":"text","text":self.prompt},
-                    {"type":"text","text":profile}
+                    {"type":"text","text":json.dumps(profile, ensure_ascii=False)}# dictはjsonしてから渡す
                     ],
                     "role":"system"
                 }

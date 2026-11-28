@@ -10,7 +10,7 @@ import json
 import asyncio
 import sys
 import traceback
-from datetime import datetime
+from datetime import datetime,timezone
 from typing import TYPE_CHECKING
 from error_handle import run_with_error_handling
 if TYPE_CHECKING:# Clusteringクラスの型チェックのため
@@ -136,12 +136,17 @@ class Get_content():
         self.public_database=public_database(db_url,web_url)
         self.stream_database=stream_database(stream_id)
 
+    def _timestamp_adjust(self,time:str):
+        dt = datetime.fromisoformat(time.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
     def get_content(self,authority:str):
         match authority:
             case "private":
                 comments=self.private_database.get_comment("log")+self.public_database.get_comment("log")
                 latest_30:list[Comment] = sorted(comments, 
-                        key=lambda x: datetime.fromisoformat(x.timestamp.replace("Z", "+00:00")), # 辞書やタプルからタイムスタンプの要素を指定
+                        key=lambda x: self._timestamp_adjust(x.timestamp), # 辞書やタプルからタイムスタンプの要素を指定
                         reverse=True
                     )[:30]
                 return latest_30

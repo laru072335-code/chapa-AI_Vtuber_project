@@ -44,6 +44,7 @@ class Settings:
     speaker: int
     ai_model: str
     ai_start: Optional[str|None]
+    ai_stop: Optional[str|None]
     max_queue_size: int
     output: Literal["Sound","Unity","Text"]
     SoundEngine_path: str
@@ -70,6 +71,7 @@ class Settings:
             speaker=int(data["Speaker"]),
             ai_model=data["AI_model"],
             ai_start=data["AI_start"],
+            ai_stop=data["AI_stop"],
             max_queue_size=int(data["Max_queue_size"]),
             output=data["Output"],
             SoundEngine_path=data["SoundEngine_path"],

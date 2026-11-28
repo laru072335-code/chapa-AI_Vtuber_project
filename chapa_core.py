@@ -42,7 +42,6 @@ class Booting_And_Shutdown:
         """macでの終了について自動化したもの"""
         for soft_name in self.soft_name_list:
             subprocess.run(['osascript', '-e', f'quit app "{soft_name}"'])
-        subprocess.run(['osascript', '-e', 'quit app "virtual_roid 0.2.app"'])
 
     def Window_shutdown(self):
         """windowsでの終了について自動化したもの"""
@@ -217,6 +216,13 @@ async def main():
             clusterer.stream_clustering(llm,setting_data.stream_id,setting_data.stream_name)
         else:
             clusterer.user_clustering(llm,setting_data.DB_API,setting_data.WEB_URL)
+        cmd=shlex.split(setting_data.ai_stop)
+        process=await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+            start_new_session=True,
+        )
 
     except httpx.ReadTimeout:
         print("接続がタイムアウトしました。パソコンのスペックが足りていないか、リクエストの数が多すぎます。")
@@ -226,6 +232,13 @@ async def main():
             booting_and_shutdown.Mac_shutdown()
         else:
             raise NotImplementedError(f"このアプリは{sys.platform}環境ではサポートされていないはずです。")
+        cmd=shlex.split(setting_data.ai_stop)
+        process=await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+            start_new_session=True,
+        )
 
     except Exception as e:
         print(f"異常なエラー({e})",end="")
