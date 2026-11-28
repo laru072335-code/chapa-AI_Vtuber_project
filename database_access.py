@@ -138,9 +138,9 @@ class stream_database(database):
             data=response.data
             for element in data:
                 if element["user_id"]==0:
-                    return_list.append(Comment("assistant",data["text"],vector_to_float_list(data["vector"]),None))
+                    return_list.append(Comment("assistant",element["text"],vector_to_float_list(element["vector"]),None))
                 else:
-                    return_list.append(Comment("user",data["text"],vector_to_float_list(data["vector"]),None))
+                    return_list.append(Comment("user",element["text"],vector_to_float_list(element["vector"]),None))
             return return_list
         
         elif mode=="log":
@@ -149,9 +149,9 @@ class stream_database(database):
             for row in response.data:
                 is_assistant = row.get("reply_record_id") is not None
                 if is_assistant:
-                    return_list.append(Comment("assistant",row["text"],vector_to_float_list(data["vector"]),row["timestamp"]))
+                    return_list.append(Comment("assistant",row["text"],vector_to_float_list(row["vector"]),row["timestamp"]))
                 else:
-                    return_list.append(Comment("user",row["text"],vector_to_float_list(data["vector"]),row["timestamp"]))
+                    return_list.append(Comment("user",row["text"],vector_to_float_list(row["vector"]),row["timestamp"]))
             return return_list
 
         else:
@@ -319,7 +319,7 @@ class public_database(database):
             print("トークンが切れました。再取得を試みます...")
             self.token = get_token(self.db_url,self.web_url)
             self.session.headers.update({"Authorization": f"Bearer {self.token}"})
-            response=self.session.post(url=f"{self.db_url}{method}",json=json)
+            response=self.session.post(url=f"{self.db_url}/{method}",json=json)
         return response
     
     def _get_request_preset(self,method:str):
@@ -328,7 +328,7 @@ class public_database(database):
             print("トークンが切れました。再取得を試みます...")
             self.token = get_token(self.db_url,self.web_url)
             self.session.headers.update({"Authorization": f"Bearer {self.token}"})
-            response=self.session.get(url=f"{self.db_url}{method}")
+            response=self.session.get(url=f"{self.db_url}/{method}")
         return response
 
 

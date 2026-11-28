@@ -11,6 +11,7 @@ import onnxruntime as ort
 import asyncio
 from database_utilities import Save_anythings
 from type_list import *
+from error_handle import run_with_error_handling
 
 class Analyze:
     """
@@ -71,10 +72,22 @@ class Analyze:
         while True:
             sentence=await in_q.get()
             if au_vec_q:#返り値がある時だけ待つ。
-                au_vec=await loop.run_in_executor(None,lambda:self._analyze_and_memory(loop,sentence,True,False))
+                au_vec=await loop.run_in_executor(
+                    None,
+                    run_with_error_handling,
+                    self._analyze_and_memory,
+                    loop,
+                    sentence,
+                    True,
+                    False)
                 await au_vec_q.put(au_vec)
             else:
-                await loop.run_in_executor(None,lambda:self._analyze_and_memory(loop,sentence))
+                await loop.run_in_executor(
+                    None,
+                    run_with_error_handling,  
+                    self._analyze_and_memory,
+                    loop,
+                    sentence)
 
     def _analyze_and_memory(self,loop,sentence:Message,au=False,test=False)->list[float]:
         """

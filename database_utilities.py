@@ -12,6 +12,7 @@ import sys
 import traceback
 from datetime import datetime
 from typing import TYPE_CHECKING
+from error_handle import run_with_error_handling
 if TYPE_CHECKING:# Clusteringクラスの型チェックのため
     import new_LLM
 
@@ -27,19 +28,6 @@ def internet_access(host: str = "1.1.1.1", port: int = 53, timeout: float = 3.0)
             return True
     except OSError:
         return False
-    
-def _run_with_error_handling(func, *args, **kwargs):
-    """
-    別スレッドで実行される関数をラップし、例外発生時にトレースバックを標準エラー出力に出力して再送出する。
-    別スレッド実行時にエラーがぬりつぶされるのを防止する。
-    """
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        func_name = getattr(func, "__name__", str(func))
-        print(f"[database_utilities] 別スレッド実行時エラー ({func_name}): {e}", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
-        raise
 
 class Save_anythings():
     """
@@ -63,7 +51,7 @@ class Save_anythings():
                     if data.is_assistant:
                         await loop.run_in_executor(
                             None,
-                            _run_with_error_handling,
+                            run_with_error_handling,
                             self.private_database.conversation_save,
                             data.content,
                             vector,
@@ -72,7 +60,7 @@ class Save_anythings():
                     else:
                         await loop.run_in_executor(
                             None,
-                            _run_with_error_handling,
+                            run_with_error_handling,
                             self.private_database.conversation_save,
                             data.content,
                             vector,
@@ -84,7 +72,7 @@ class Save_anythings():
                         if save_id:
                             await loop.run_in_executor(
                                 None,
-                                _run_with_error_handling,
+                                run_with_error_handling,
                                 self.public_database.conversation_save,
                                 data.content,
                                 vector,
@@ -96,7 +84,7 @@ class Save_anythings():
                     else:
                         temp=await loop.run_in_executor(
                             None,
-                            _run_with_error_handling,
+                            run_with_error_handling,
                             self.public_database.conversation_save,
                             data.content,
                             vector,
@@ -109,7 +97,7 @@ class Save_anythings():
                     if data.is_assistant:
                             await loop.run_in_executor(
                                 None,
-                                _run_with_error_handling,
+                                run_with_error_handling,
                                 self.stream_database.conversation_save,
                                 data.user_name,
                                 data.content,
@@ -120,7 +108,7 @@ class Save_anythings():
                     else:
                         temp=await loop.run_in_executor(
                             None,
-                            _run_with_error_handling,
+                            run_with_error_handling,
                             self.stream_database.conversation_save,
                             data.user_name,
                             data.content,
