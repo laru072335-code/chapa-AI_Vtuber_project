@@ -84,10 +84,15 @@ class Discord_input(Input_format):
 
 class Unity_input(Input_format):
     def __init__(self,unity_q:asyncio.Queue):
-        super().__init__()
         self.unity_q=unity_q
 
     async def latest_get_comment(self,*out_q : asyncio.Queue[Message]):
+        byte = await self.unity_q.get()
+        if byte=="Connect":
+            print("接続完了！")
+        else:
+            raise ConnectionError("正常な接続ができませんでした")
+
         while True:
             byte =await self.unity_q.get()
             message=msgpack.unpackb(byte,raw=False)
@@ -99,13 +104,10 @@ class Unity_input(Input_format):
     async def is_ready(self):
         """
         つながった時の確認用メッセージを確認するまで待機
+        ↑
+        処理順の関係でうまく動かなかったので常にTrue
         """
-        recive=await self.unity_q.get()
-        if recive=="Connect":
-            return True
-        else:
-            raise ConnectionError("正常な接続ができませんでした")
-
+        return True
 
 class Stream_input(Input_format):
     """

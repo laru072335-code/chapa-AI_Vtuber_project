@@ -18,6 +18,7 @@ import Inputs
 import traceback
 import sys
 import psutil
+import shlex
 
 class Booting_And_Shutdown:
     """
@@ -90,29 +91,37 @@ async def main():
     client_task = asyncio.to_thread(AsyncClient)
     analyze_task = asyncio.to_thread(Analyze, setting_data.DB_API, setting_data.WEB_URL,setting_data.stream_id)
     llm_task = asyncio.to_thread(LLMProvider, setting_data)
-    # 4つの処理の完了を同時に待つ
-    Client, analyze, llm, = await asyncio.gather(
-        client_task, analyze_task, llm_task, 
+    cmd=shlex.split(setting_data.ai_start)
+    process=await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+        start_new_session=True,
     )
+    # 4つの処理の完了を同時に待つ
+    Client, analyze, llm = await asyncio.gather(
+        client_task, analyze_task, llm_task
+    )
+    print(process.returncode)
     server=None
     match  setting_data.input_type:
-        case "socialstream":
+        case "Socialstream":
             inputer=Inputs.socialstream_input(setting_data.stream_id)
             if platform=="win":
                 booting_and_shutdown.Window_open_other_app(setting_data.socialstream_path)
             else:
                 booting_and_shutdown.Mac_open_other_app("socialstream")
-        case "discord":
+        case "Discord":
             inputer=Inputs.Discord_input()
-        case "unity":
+        case "Unity":
             unity_recive_queue=asyncio.Queue(maxsize=setting_data.max_queue_size)
             server=unityserver(unity_recive_queue)
             inputer=Inputs.Unity_input(unity_recive_queue)
             if platform=="win":
                 booting_and_shutdown.Window_open_other_app("virtual Roid_0.2.exe")
             else:
-                booting_and_shutdown.Mac_open_other_app("virtual_roid 0.2.app")
-        case "stream":
+                booting_and_shutdown.Mac_open_other_app("UnityInput.app")
+        case "Stream":
             inputer=Inputs.Stream_input(setting_data.stream_id,setting_data.Public_key)
         case _:
             raise ValueError("inputは現在その形式に対応していません。")
@@ -130,7 +139,7 @@ async def main():
             voice=sound_engine.COEIROINKProvider()
         case _:
             raise ValueError("SoundEngineは現在、voicevox,aivisspeech,coerioinkにしか対応していません。いずれかを入力してください。")
-    
+
     await booting_and_shutdown.before_check(Client,voice,inputer)
 
     #簡単な部分だけ型を厳密にしている
@@ -159,7 +168,7 @@ async def main():
                 if platform=="win":
                     booting_and_shutdown.Window_open_other_app("virtual Roid_0.2.exe")
                 else:
-                    booting_and_shutdown.Mac_open_other_app("virtual_roid 0.2.app")
+                    booting_and_shutdown.Mac_open_other_app("UnityInput.app")
             worker=[
                 asyncio.create_task(server.main()),
                 asyncio.create_task(inputer.latest_get_comment(

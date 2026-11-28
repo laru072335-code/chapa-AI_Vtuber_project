@@ -23,7 +23,7 @@ class Message(BaseModel):
         if v != "text":
             raise ValueError(f"現在 '{v}' タイプは未対応です。'text' のみサポートしています。将来対応させる予定です")
         return v
-
+    
     @property
     def is_private(self) -> bool:
         return self.authority=="private"
@@ -43,12 +43,13 @@ class Settings:
     """
     speaker: int
     ai_model: str
+    ai_start: Optional[str|None]
     max_queue_size: int
     output: Literal["Sound","Unity","Text"]
     SoundEngine_path: str
     socialstream_path: str
     soundEngine : Literal["voicevox","aivis","coeiroink"]
-    input_type:Literal["socialstream","discord","unity","stream"]
+    input_type:Literal["Socialstream","Discord","Unity","Stream"]
     Public_key:str
     DB_API:str
     WEB_URL:str
@@ -68,6 +69,7 @@ class Settings:
         return cls(
             speaker=int(data["Speaker"]),
             ai_model=data["AI_model"],
+            ai_start=data["AI_start"],
             max_queue_size=int(data["Max_queue_size"]),
             output=data["Output"],
             SoundEngine_path=data["SoundEngine_path"],
